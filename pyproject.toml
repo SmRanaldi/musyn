@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=65", "setuptools-scm>=7", "cython>=3.0", "numpy>=1.24"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "musyn"
+dynamic = ["version"]
+description = "Muscle synergy analysis from surface EMG: adaptive envelope extraction, NMF decomposition, AIC-based synergy number selection"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Simone Ranaldi", email = "sm.ranaldi@gmail.com" }
+]
+keywords = ["EMG", "electromyography", "muscle synergy", "NMF", "envelope", "biomechanics", "motor control"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "joblib>=1.3",
+]
+
+[project.optional-dependencies]
+wavelet = ["PyWavelets>=1.4"]
+jit = ["numba>=0.57"]
+plot = ["matplotlib>=3.7"]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "hypothesis>=6.100",
+    "cython>=3.0",
+]
+all = ["musyn[wavelet,jit,plot,dev]"]
+
+[project.urls]
+Repository = "https://github.com/SmRanaldi/musyn"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+write_to = "src/musyn/_version.py"
+fallback_version = "0.1.0"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "NPY"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short -q"
+markers = [
+    "slow: marks tests as slow (deselect with -m 'not slow')",
+    "numba: marks tests requiring numba",
+    "wavelet: marks tests requiring pywt",
+    "cython: marks tests requiring the compiled C extension",
+]
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+ignore_missing_imports = true
