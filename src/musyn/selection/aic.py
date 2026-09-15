@@ -1,9 +1,13 @@
 """
-Modified AIC computation for muscle synergy model order selection.
+AIC computation for muscle synergy model order selection.
 
-Key fix over classical AIC:
-  - Uses signal-dependent noise in the log-likelihood (avoids minimum at k=1)
-  - Uses wavelet-estimated effective DoF (not simply k*n_muscles + k*n_samples)
+Matches the reference implementation (pysyn.py, UCD-UNIFE 2026).
+
+Likelihood:
+  L = Σ_i [ Σ_t (rec_it - M_it)² / (var(M) + std(rec_i)) ]
+
+AIC:
+  AIC(k) = L + 2·k·N_M + 2·Σ_i DoF_i
 
 References
 ----------
@@ -21,135 +25,132 @@ from musyn.decomposition.init_strategies import InitStrategy
 from musyn.selection.wavelet_dof import compute_total_dof
 
 
-def log_likelihood(
-    M_matrix: np.ndarray,
-    M_hat: np.ndarray,
-    sigma2: np.ndarray,
-) -> float:
+def compute_likelihood(M: np.ndarray, rec: np.ndarray) -> float:
     """
-    Modified log-likelihood under signal-dependent Gaussian noise.
+    Reconstruction loss normalised by signal + model noise.
 
-    log L = -0.5 * Σ_ij [ (M_ij - M̂_ij)² / σ²_ij + log(2π σ²_ij) ]
+    For each channel i:
+      L_i = Σ_t (rec_it - M_it)² / (var(M) + std(rec_i))
 
     Parameters
     ----------
-    M_matrix : np.ndarray, shape (M, N)
+    M : np.ndarray, shape (n_muscles, n_samples)
         Observed envelope matrix.
-    M_hat : np.ndarray, shape (M, N)
+    rec : np.ndarray, shape (n_muscles, n_samples)
         NMF reconstruction W @ C.
-    sigma2 : np.ndarray, shape (M, N)
-        Total noise variance at each (muscle, time) point.
 
     Returns
     -------
-    log_L : float
-
-    Notes
-    -----
-    Paper: Eq. (5), Ranaldi et al. (2021).
+    L : float
     """
-    safe_sigma2 = np.maximum(sigma2, 1e-12)
-    sq_err = (M_matrix - M_hat) ** 2 / safe_sigma2
-    log_term = np.log(2.0 * np.pi * safe_sigma2)
-    return float(-0.5 * np.sum(sq_err + log_term))
+    global_var = float(np.var(M))
+    total = 0.0
+    for i in range(M.shape[0]):
+        channel_noise = global_var + float(np.std(rec[i]))
+        total += float(np.sum((rec[i] - M[i]) ** 2) / channel_noise)
+    return total
 
 
 def compute_aic_for_k(
     M_matrix: np.ndarray,
     k: int,
-    sigma2: np.ndarray,
     n_muscles: int,
     wavelet: str = "db5",
     n_runs: int = 5,
     init: InitStrategy = "sparse",
+    events: np.ndarray | None = None,
     rng=None,
-) -> tuple[float, np.ndarray, np.ndarray]:
+    compute_dof: bool = True,
+) -> tuple[float | None, np.ndarray, np.ndarray]:
     """
-    Compute the modified AIC for a single synergy count k.
+    Compute AIC for a single synergy count k.
 
-    AIC(k) = -log L(M̂) + 2k·N_M + 2·Σ_i N_DoF,i
+    AIC(k) = L + 2·k·N_M + 2·Σ_i DoF_i
 
     Parameters
     ----------
-    M_matrix : np.ndarray, shape (M, N)
+    M_matrix : np.ndarray, shape (n_muscles, n_samples)
     k : int
-        Number of synergies.
-    sigma2 : np.ndarray, shape (M, N)
     n_muscles : int
-        N_M in the AIC formula.
     wavelet : str
-        Wavelet for DoF estimation.
     n_runs : int
         NMF restarts (best solution used).
     init : InitStrategy
+    events : 1D array-like of int, optional
+        Segment-boundary indices for per-cycle DoF estimation.
     rng : seed
+    compute_dof : bool
+        If False, skip the likelihood and wavelet-DoF terms (the AIC-specific,
+        expensive part -- see ``compute_total_dof``) and return ``aic_k=None``.
+        Set False by ``select_synergy_number`` when ``method`` doesn't need an
+        AIC curve at all (e.g. 'vaf'), since the NMF fit (W, C) is still needed
+        by every method but the DoF term only by AIC-curve-based ones.
 
     Returns
     -------
-    aic_k : float
-    W : np.ndarray, shape (M, k)
-    C : np.ndarray, shape (k, N)
-
-    Notes
-    -----
-    Paper: AIC(k) = -log L(M̂) + 2k·N_M + 2·Σ N_DoF,i (Eq. 4).
+    aic_k : float or None
+        None when ``compute_dof=False``.
+    W : np.ndarray, shape (n_muscles, k)
+    C : np.ndarray, shape (k, n_samples)
     """
-    W, C, _ = run_nnmf_multi(
-        M_matrix, k, n_runs=n_runs, init=init, rng=rng,
-    )
-    M_hat = W @ C
-    log_L = log_likelihood(M_matrix, M_hat, sigma2)
-    total_dof = compute_total_dof(C, wavelet=wavelet)
-    aic_k = -log_L + 2.0 * k * n_muscles + 2.0 * total_dof
-    return aic_k, W, C
+    W, C, _ = run_nnmf_multi(M_matrix, k, n_runs=n_runs, init=init, rng=rng)
+    if not compute_dof:
+        return None, W, C
+    rec = W @ C
+    L = compute_likelihood(M_matrix, rec)
+    total_dof = compute_total_dof(C, wavelet=wavelet, events=events)
+    return L + 2.0 * k * n_muscles + 2.0 * total_dof, W, C
 
 
 def aic_curve(
     M_matrix: np.ndarray,
     k_range: list[int],
-    sigma2: np.ndarray,
     wavelet: str = "db5",
     n_runs: int = 5,
     init: InitStrategy = "sparse",
+    events: np.ndarray | None = None,
     n_jobs: int = -1,
     rng=None,
-) -> tuple[np.ndarray, list[tuple[np.ndarray, np.ndarray]]]:
+    compute_dof: bool = True,
+) -> tuple[np.ndarray | None, list[tuple[np.ndarray, np.ndarray]]]:
     """
-    Compute modified AIC for each k in k_range (parallelized).
+    Compute AIC for each k in k_range (parallelised).
 
     Parameters
     ----------
-    M_matrix : np.ndarray, shape (M, N)
+    M_matrix : np.ndarray, shape (n_muscles, n_samples)
     k_range : list[int]
-        Synergy counts to evaluate.
-    sigma2 : np.ndarray, shape (M, N)
-        Total noise variance.
     wavelet : str
-        Default 'db5'.
     n_runs : int
-        NMF restarts per k.
     init : InitStrategy
+    events : 1D array-like of int, optional
     n_jobs : int
-        Parallel jobs. -1 = all CPUs.
     rng : seed
+    compute_dof : bool
+        If False, every k skips the likelihood + wavelet-DoF terms (see
+        ``compute_aic_for_k``) and ``aic_values`` comes back as None -- only
+        the NMF solutions are computed. Use when the caller's selection
+        method doesn't consume an AIC curve.
 
     Returns
     -------
-    aic_values : np.ndarray, shape (len(k_range),)
+    aic_values : np.ndarray, shape (len(k_range),), or None
+        None when ``compute_dof=False``.
     solutions : list of (W, C) tuples
     """
     n_muscles = M_matrix.shape[0]
     master_rng = np.random.default_rng(rng)
-    seeds = master_rng.integers(0, 2**31, size=len(k_range))
+    seeds = master_rng.integers(0, 2 ** 31, size=len(k_range))
 
     results = Parallel(n_jobs=n_jobs)(
         delayed(compute_aic_for_k)(
-            M_matrix, k, sigma2, n_muscles,
-            wavelet=wavelet, n_runs=n_runs, init=init, rng=int(seed),
+            M_matrix, k, n_muscles,
+            wavelet=wavelet, n_runs=n_runs, init=init,
+            events=events, rng=int(seed), compute_dof=compute_dof,
         )
         for k, seed in zip(k_range, seeds)
     )
 
-    aic_values = np.array([r[0] for r in results])
+    aic_values = np.array([r[0] for r in results]) if compute_dof else None
     solutions = [(r[1], r[2]) for r in results]
     return aic_values, solutions

@@ -14,20 +14,25 @@ from typing import Union
 import numpy as np
 
 from musyn.decomposition.init_strategies import InitStrategy
-from musyn.selection.noise import estimate_measurement_noise, total_noise_variance
 from musyn.selection.aic import aic_curve
 from musyn.selection.criteria import SelectionMethod, select_synergy_count
 from musyn.utils.validation import check_emg_matrix
+
+# Methods that select from an AIC curve (and therefore need the expensive,
+# wavelet-based DoF term computed by aic_curve/compute_total_dof). The other
+# methods ('vaf', 'r2', 'plateau', 'surrogate') only consume the NMF
+# solutions (W, C) -- see criteria.select_synergy_count's _needs_solutions.
+_NEEDS_AIC_CURVE: frozenset[str] = frozenset({"min", "der", "firstpeak", "lastpeak"})
 
 
 def select_synergy_number(
     M_matrix: Union[np.ndarray, list],
     k_range: Union[range, list[int], None] = None,
     method: SelectionMethod = "min",
-    sdn_c: float = 0.175,
     n_runs: int = 5,
     wavelet: str = "db5",
     init: InitStrategy = "sparse",
+    events: Union[np.ndarray, list, None] = None,
     n_jobs: int = -1,
     return_full: bool = False,
     seed=None,
@@ -37,9 +42,13 @@ def select_synergy_number(
     Select the optimal number of muscle synergies via modified AIC.
 
     Implements the information-based criterion of Ranaldi et al. (2021).
-    Fixes two critical problems of classical AIC applied to NMF:
-      1. Uses signal-dependent noise in the log-likelihood.
-      2. Uses wavelet-based effective DoF instead of parameter count.
+    The AIC formula is:
+
+      AIC(k) = L(k) + 2·k·N_M + 2·Σ_i DoF_i(k)
+
+    where L is the per-channel squared reconstruction error normalised by
+    signal variance + per-channel reconstruction noise, and DoF_i is the
+    wavelet-based effective degrees of freedom for the i-th synergy activation.
 
     Parameters
     ----------
@@ -53,23 +62,31 @@ def select_synergy_number(
         - ``'der'``: first stationary point of the normalised derivative.
         - ``'firstpeak'``: first local minimum.
         - ``'lastpeak'``: last local minimum.
-        - ``'vaf'``: first k where VAF ≥ 0.97.
-        - ``'r2'``: first k where R² ≥ 0.95.
-        - ``'plateau'``: first k where ΔAIC ≤ 5%.
+        - ``'vaf'``: first k where VAF >= 0.97.
+        - ``'r2'``: first k where R² >= 0.95.
+        - ``'plateau'``: first k where DVAF <= 5%.
         - ``'surrogate'``: surrogate-data baseline comparison.
-    sdn_c : float
-        Signal-dependent noise coefficient c ∈ [0.1, 0.25].
-        Default 0.175 (midpoint of paper's range).
     n_runs : int
         NMF restarts per k. Default 5.
     wavelet : str
         Wavelet for DoF estimation. Default 'db5' (Daubechies-5).
     init : InitStrategy
         NMF initialization. Default 'sparse'.
+    events : 1D array-like of int, optional
+        Segment-boundary sample indices (0-based) marking the start/end of
+        each movement cycle or repetition, e.g. ``[0, 1200, 2400, 3600]``
+        for three cycles of 1200 samples each.
+        **Strongly recommended**: without events the wavelet DoF is computed
+        on the full signal rather than per-cycle, which underestimates the
+        penalty term and may suppress the ascending phase of the AIC curve.
+        Unused (and never even computed) for 'vaf', 'r2', 'plateau', and
+        'surrogate', which don't build an AIC curve at all -- see ``method``.
     n_jobs : int
         Parallel jobs for AIC k-sweep. Default -1 (all CPUs).
     return_full : bool
-        If True, return a dict with the full AIC curve and solutions.
+        If True, return a dict with the full AIC curve and solutions. Note:
+        for 'vaf', 'r2', 'plateau', and 'surrogate' the AIC curve itself is
+        never computed (see below), so ``aic_values`` comes back as None.
     seed : int or None
         Random seed.
     **method_kwargs
@@ -82,8 +99,7 @@ def select_synergy_number(
         Optimal number of synergies.
     result : dict, optional
         Only if ``return_full=True``. Keys:
-        ``k_opt``, ``aic_values``, ``k_range``, ``solutions``,
-        ``sigma2``, ``method``.
+        ``k_opt``, ``aic_values``, ``k_range``, ``solutions``, ``method``.
 
     References
     ----------
@@ -110,18 +126,13 @@ def select_synergy_number(
     else:
         k_range = list(k_range)
 
-    # Estimate noise
-    sigma2_M = estimate_measurement_noise(M_matrix)
-    sigma2 = total_noise_variance(M_matrix, sigma2_M, c=sdn_c)
-
-    # Compute AIC curve (parallelized over k)
     aic_values, solutions = aic_curve(
-        M_matrix, k_range, sigma2,
+        M_matrix, k_range,
         wavelet=wavelet, n_runs=n_runs, init=init,
-        n_jobs=n_jobs, rng=seed,
+        events=events, n_jobs=n_jobs, rng=seed,
+        compute_dof=method in _NEEDS_AIC_CURVE,
     )
 
-    # Select k
     k_opt = select_synergy_count(
         aic_values, k_range, method,
         M_matrix=M_matrix,
@@ -135,7 +146,6 @@ def select_synergy_number(
             "aic_values": aic_values,
             "k_range": k_range,
             "solutions": solutions,
-            "sigma2": sigma2,
             "method": method,
         }
     return k_opt
