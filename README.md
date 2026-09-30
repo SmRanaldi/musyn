@@ -365,7 +365,7 @@ python examples/03_synergy_number_selection.py
   *Comparison of Initialization Techniques for Accurate Extraction of
   Muscle Synergies from Myoelectric Signals via NNMF.*
   Applied Bionics and Biomechanics.
-- Ranaldi S, Severini G, Bibbo D, Conforto S, De Marchis C (2021)
+- Ranaldi S, Severini G, Conforto S, De Marchis C (2021)
   *An Objective, Information-Based Approach for Selecting the Number of
   Muscle Synergies via NNMF.*
   IEEE Trans Neural Syst Rehabil Eng.
