@@ -9,10 +9,7 @@ Applied Bionics and Biomechanics.
 """
 from __future__ import annotations
 
-from typing import Union
-
 import numpy as np
-from joblib import Parallel, delayed
 
 from musyn.decomposition.init_strategies import InitStrategy
 from musyn.decomposition.nnmf import run_nnmf_multi
@@ -20,7 +17,7 @@ from musyn.utils.validation import check_emg_matrix, check_n_synergies
 
 
 def extract_synergies(
-    D: Union[np.ndarray, list],
+    D: np.ndarray | list,
     n_synergies: int,
     init: InitStrategy = "sparse",
     n_runs: int = 10,

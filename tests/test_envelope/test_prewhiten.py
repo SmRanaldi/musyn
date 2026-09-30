@@ -1,12 +1,15 @@
 """Tests for AR-based prewhitening."""
 import numpy as np
-import pytest
+
 from musyn.envelope.prewhiten import (
-    compute_autocorrelation,
     estimate_ar_coefficients,
     whiten_signal,
-    prewhiten,
 )
+
+
+def compute_autocorrelation(x, max_lag=20, biased=True):
+    from musyn.envelope.prewhiten import compute_autocorrelation as _c
+    return _c(x, max_lag, biased)
 
 
 def test_autocorrelation_shape(rng):
@@ -19,11 +22,6 @@ def test_autocorrelation_r0_positive(rng):
     x = rng.standard_normal(1000)
     r = compute_autocorrelation(x)
     assert r[0] > 0
-
-
-def compute_autocorrelation(x, max_lag=20, biased=True):
-    from musyn.envelope.prewhiten import compute_autocorrelation as _c
-    return _c(x, max_lag, biased)
 
 
 def test_ar_coefficients_shape(rng):

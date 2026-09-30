@@ -1,0 +1,72 @@
+# Update `version` and `date-released` on every tagged release.
+cff-version: 1.2.0
+message: >-
+  If you use musyn in your research, please cite the software itself
+  and, where relevant, the specific paper(s) behind the algorithm(s)
+  you used (see "prefer-citation" style references below).
+title: "musyn: Muscle Synergy Analysis from Surface EMG"
+type: software
+version: 0.1.0
+date-released: "2026-09-30"
+url: "https://github.com/SmRanaldi/musyn"
+repository-code: "https://github.com/SmRanaldi/musyn"
+license: MIT
+authors:
+  - family-names: Ranaldi
+    given-names: Simone
+    email: sm.ranaldi@gmail.com
+keywords:
+  - electromyography
+  - sEMG
+  - muscle synergies
+  - non-negative matrix factorization
+  - motor control
+  - biomechanics
+references:
+  - type: article
+    title: >-
+      An automatic, adaptive, information-based algorithm for the
+      extraction of the sEMG envelope
+    authors:
+      - family-names: Ranaldi
+        given-names: Simone
+      - family-names: De Marchis
+        given-names: Cristiano
+      - family-names: Conforto
+        given-names: Silvia
+    journal: Journal of Electromyography and Kinesiology
+    year: 2018
+  - type: article
+    title: >-
+      Comparison of Initialization Techniques for Accurate Extraction
+      of Muscle Synergies from Myoelectric Signals via NNMF
+    authors:
+      - family-names: Soomro
+        given-names: Mohsin Hasan
+      - family-names: Bhatti
+        given-names: Muhammad Hamid
+      - family-names: Kamboh
+        given-names: Awais Mehmood
+      - family-names: Bhatti
+        given-names: Adnan
+      - family-names: McEwan
+        given-names: Alistair L.
+    journal: Applied Bionics and Biomechanics
+    year: 2018
+  - type: article
+    title: >-
+      An Objective, Information-Based Approach for Selecting the
+      Number of Muscle Synergies via NNMF
+    authors:
+      - family-names: Ranaldi
+        given-names: Simone
+      - family-names: Severini
+        given-names: Giacomo
+      - family-names: Bibbo
+        given-names: Daniele
+      - family-names: Conforto
+        given-names: Silvia
+      - family-names: De Marchis
+        given-names: Cristiano
+    journal: IEEE Transactions on Neural Systems and Rehabilitation Engineering
+    year: 2021

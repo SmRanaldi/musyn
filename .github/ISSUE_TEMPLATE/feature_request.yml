@@ -1,0 +1,37 @@
+name: Feature request
+description: Suggest a new capability, parameter, or preprocessing utility
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do that musyn doesn't currently support?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API
+      description: >-
+        Sketch the function signature or CLI you have in mind, if applicable.
+      render: python
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds you're using today, or other approaches you considered.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Envelope extraction (Algorithm 1)
+        - NMF synergy extraction (Algorithm 2)
+        - AIC synergy number selection (Algorithm 3)
+        - Preprocessing
+        - I/O
+        - Documentation
+        - Other / not sure
+    validations:
+      required: true

@@ -27,8 +27,10 @@ def main():
     env_single, info = musyn.extract_envelope(
         raw_emg[0], fs=fs, return_info=True
     )
+    M = info[0]["window_lengths"]
     print(f"\nChannel 0: {info[0]['iterations']} iterations, "
           f"converged={info[0]['converged']}, backend={info[0]['backend']}")
+    print(f"  M_k: min={M.min():.0f}  max={M.max():.0f}  mean={M.mean():.0f} samples")
 
     # --- All channels (parallelised) ---
     env_all, infos = musyn.extract_envelope(raw_emg, fs=fs, return_info=True)
@@ -43,15 +45,16 @@ def main():
         fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
         axes[0].plot(t, raw_emg[0], lw=0.5, alpha=0.6, label="raw EMG")
         axes[0].plot(t, envelope_true[0], "k--", lw=1.5, label="true envelope")
-        axes[0].plot(t, env_single, "r-", lw=1.5, label="estimated envelope")
+        axes[0].plot(t, env_all[0], "r-", lw=1.5, label="estimated envelope")
         axes[0].set_ylabel("Amplitude")
         axes[0].legend()
         axes[0].set_title("Channel 0 — adaptive envelope")
 
-        axes[1].plot(t, env_all.T)
+        M_lengths = infos[0]["window_lengths"]  # optimal window per sample, channel 0
+        axes[1].plot(t, M_lengths, lw=1.0, color="steelblue")
         axes[1].set_xlabel("Time (s)")
-        axes[1].set_ylabel("Amplitude")
-        axes[1].set_title("All channels — envelope")
+        axes[1].set_ylabel("Window length (samples)")
+        axes[1].set_title("Channel 0 — optimal window length $M_k$")
 
         plt.tight_layout()
         plt.savefig(Path(__file__).parent / "01_envelope.png", dpi=150)

@@ -2,13 +2,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Union
 
 import numpy as np
 
 
 def load_csv(
-    path: Union[str, Path],
+    path: str | Path,
     fs: float = 1000.0,
     channel_axis: int = 0,
     **read_csv_kwargs,
@@ -40,7 +39,7 @@ def load_csv(
 
 
 def load_mat(
-    path: Union[str, Path],
+    path: str | Path,
     data_key: str = "emg",
     fs_key: str = "fs",
 ) -> tuple[np.ndarray, float]:
@@ -69,7 +68,7 @@ def load_mat(
     return data, fs
 
 
-def load_npz(path: Union[str, Path]) -> dict:
+def load_npz(path: str | Path) -> dict:
     """
     Load data from a NumPy .npz archive.
 

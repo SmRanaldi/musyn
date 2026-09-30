@@ -9,8 +9,6 @@ IEEE Trans Neural Syst Rehabil Eng.
 """
 from __future__ import annotations
 
-from typing import Union
-
 import numpy as np
 
 from musyn.decomposition.init_strategies import InitStrategy
@@ -26,18 +24,18 @@ _NEEDS_AIC_CURVE: frozenset[str] = frozenset({"min", "der", "firstpeak", "lastpe
 
 
 def select_synergy_number(
-    M_matrix: Union[np.ndarray, list],
-    k_range: Union[range, list[int], None] = None,
+    M_matrix: np.ndarray | list,
+    k_range: range | list[int] | None = None,
     method: SelectionMethod = "min",
     n_runs: int = 5,
     wavelet: str = "db5",
     init: InitStrategy = "sparse",
-    events: Union[np.ndarray, list, None] = None,
+    events: np.ndarray | list | None = None,
     n_jobs: int = -1,
     return_full: bool = False,
     seed=None,
     **method_kwargs,
-) -> Union[int, dict]:
+) -> int | dict:
     """
     Select the optimal number of muscle synergies via modified AIC.
 

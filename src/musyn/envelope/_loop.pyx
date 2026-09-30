@@ -2,108 +2,194 @@
 """
 Cython C extension for the adaptive envelope hot loop.
 
-Direct port of the MATLAB MEX ``loopFunction.c`` from SmRanaldi/EMG_envelope.
-Compiled at install time via ``setup.py``. ~100-500x faster than pure Python.
+Direct port of loopFunction.c (SmRanaldi/EMG_envelope mex/ subfolder).
+Compiled at install time via setup.py.
 
-If this extension is not compiled (Cython unavailable or build failed),
-the package falls back to Numba JIT or NumPy — see ``adaptive.py``.
+Constants match loopFunction.c exactly:
+    P_NORM   = 0.797884560802866   (= sqrt(2/pi))
+    F_FACTOR = 0.535398163397448   (= (pi-1) / (alpha*nu)^2 for alpha=1,nu=2)
+
+If this extension is not compiled, the package falls back to Numba JIT or
+NumPy — see adaptive.py.
 
 References
 ----------
-Ranaldi et al. (2018), Equations (3)–(6).
+Ranaldi et al. (2018), Equations (3)–(6). MATLAB repo SmRanaldi/EMG_envelope.
 """
 
 import numpy as np
 cimport numpy as np
-from libc.math cimport abs as c_abs, pow as c_pow, sqrt, log, exp, lgamma
+from libc.math cimport (
+    fabs as c_abs, pow as c_pow, sqrt, log, exp, lgamma, ceil as c_ceil,
+    round as c_round
+)
 
 np.import_array()
 
-# ─── internal helpers ────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Constants (from loopFunction.c)
+# ---------------------------------------------------------------------------
 
-cdef double _f_alpha_nu(double alpha, double nu) noexcept nogil:
-    """f(alpha, nu) from Eq. (2), Ranaldi et al. (2018)."""
-    cdef double ratio = sqrt(3.14159265358979323846) * exp(
-        lgamma(nu + 0.5) - lgamma(nu + 1.0)
-    )
-    return (ratio * ratio - 1.0) / ((alpha * nu) * (alpha * nu))
+cdef double P_NORM = 0.797884560802866   # sqrt(2/pi), alpha=1
+cdef double F_FACTOR = 0.535398163397448 # (pi-1)/4, alpha=1,nu=2
+
+cdef double PI = 3.141592653589793238
 
 
-cdef double _local_sum(
-    double[::1] signal, int k, int half, int n, double nu
+# ---------------------------------------------------------------------------
+# Compile-time helpers for generic alpha/nu
+# ---------------------------------------------------------------------------
+
+cdef inline double _p_norm_c(double alpha) noexcept nogil:
+    """p = 2^(1/(2α)) · exp(lgamma((α+1)/(2α)) − 0.5·log(π))."""
+    return c_pow(2.0, 1.0 / (2.0 * alpha)) * exp(lgamma((alpha + 1.0) / (2.0 * alpha)) - 0.5 * log(PI))
+
+
+cdef inline double _f_factor_c(double alpha, double nu) noexcept nogil:
+    """F = (π − 1) / (α·ν)²  (matches loopFunction.c F_FACTOR)."""
+    return (PI - 1.0) / ((alpha * nu) * (alpha * nu))
+
+
+# ---------------------------------------------------------------------------
+# Per-sample helpers
+# ---------------------------------------------------------------------------
+
+cdef double _envelope_k(
+    double[::1] signal, int k, double m_k, int n,
+    double nu, double p, double exp_env
 ) noexcept nogil:
-    """Sum |s_{k+i}|^nu for i in [-half, half], clamped to [0, n-1]."""
-    cdef double total = 0.0
-    cdef int i, idx
-    for i in range(-half, half + 1):
-        idx = k + i
-        if 0 <= idx < n:
-            total += c_pow(c_abs(signal[idx]), nu)
-    return total
+    """
+    W_k = (mean_{[k-semi, k+semi]} |s|^ν / p)^(1/(α·ν)).
+
+    semiLen = ceil(m_k / 2); clamped to [0, n-1].
+    """
+    cdef int semi, lo, hi, L, j
+    cdef double acc
+
+    semi = <int>c_ceil(m_k * 0.5)
+    lo = k - semi
+    if lo < 0:
+        lo = 0
+    hi = k + semi
+    if hi >= n:
+        hi = n - 1
+    L = hi - lo + 1
+
+    acc = 0.0
+    for j in range(lo, hi + 1):
+        acc += c_pow(c_abs(signal[j]), nu)
+
+    return c_pow(acc / <double>L / p, exp_env)
 
 
-cdef double _first_deriv(
-    double[::1] signal, int k, int half, int n, double alpha
+cdef void _derivatives_k(
+    double[::1] signal, int k, double m_k, int n,
+    double inv_alpha, double p,
+    double *d1_out, double *d2_out
 ) noexcept nogil:
-    """First derivative a_k (Eq. 4)."""
-    cdef double num = 0.0
-    cdef double denom = 0.0
-    cdef int j, idx
-    cdef double jf
-    for j in range(-half, half + 1):
-        jf = <double>j
-        idx = k + j
-        if 0 <= idx < n:
-            num += jf * c_pow(c_abs(signal[idx]), alpha)
-        denom += jf * jf
-    if denom == 0.0:
-        return 0.0
-    return 2.0 * num / denom
+    """
+    d1, d2 at sample k — port of derivativesEstimation() in loopFunction.c.
+
+    Centering: a[j] = j − ceil(L/2)  for j = 0 … L-1.
+
+    d1 = sum(a·|s|^(1/α)) / (sum(a²)·p)
+    d2 = 2·(t1 − t2)
+        t1  = sum(a²·|s|^(1/α)) / (sum(a⁴)·p)
+        c   = sum(a²)/sum(a⁴)
+        t2  = (c/p)·sum((1−a²c)·|s|^(1/α)) / (L + c·sum(a²))
+    """
+    cdef int semi, lo, hi, L, center, j
+    cdef double a, a2, s_pow
+    cdef double r, r2, c
+    cdef double est1, est2_1, est2_2
+    cdef double t1, t2, denom2
+
+    semi = <int>c_ceil(m_k * 0.5)
+    lo = k - semi
+    if lo < 0:
+        lo = 0
+    hi = k + semi
+    if hi >= n:
+        hi = n - 1
+    L = hi - lo + 1
+    center = <int>c_ceil(0.5 * <double>L)
+
+    # First pass: accumulate r = sum(a^2), r2 = sum(a^4)
+    r = 0.0
+    r2 = 0.0
+    for j in range(L):
+        a = <double>j - <double>center
+        a2 = a * a
+        r += a2
+        r2 += a2 * a2
+
+    if r == 0.0:
+        d1_out[0] = 0.0
+        d2_out[0] = 0.0
+        return
+
+    c = r / r2 if r2 != 0.0 else 0.0
+
+    # Second pass: accumulate est1, est2_1, est2_2
+    est1 = 0.0
+    est2_1 = 0.0
+    est2_2 = 0.0
+    for j in range(L):
+        a = <double>j - <double>center
+        s_pow = c_pow(c_abs(signal[lo + j]), inv_alpha)
+        a2 = a * a
+        est1 += a * s_pow
+        est2_1 += a2 * s_pow
+        est2_2 += (1.0 - a2 * c) * s_pow
+
+    d1_out[0] = est1 / (r * p)
+
+    if r2 == 0.0:
+        d2_out[0] = 0.0
+        return
+
+    t1 = est2_1 / (r2 * p)
+    denom2 = <double>L + c * r
+    t2 = (r / (r2 * p)) * est2_2 / denom2 if denom2 != 0.0 else 0.0
+    d2_out[0] = 2.0 * (t1 - t2)
 
 
-cdef double _second_deriv(
-    double[::1] signal, int k, int half, int n,
-    double alpha, double w_k, double a_k, double p_k
+cdef double _filter_length_k(
+    double env_k, double d1_k, double d2_k,
+    double alpha_nu_m1, double f_val,
+    int w_min, int w_max
 ) noexcept nogil:
-    """Second derivative b_k (Eq. 5)."""
-    cdef double sum_j2 = 0.0
-    cdef double t1_num = 0.0
-    cdef int j, idx
-    cdef double jf, j2
-    for j in range(-half, half + 1):
-        jf = <double>j
-        j2 = jf * jf
-        sum_j2 += j2
-        idx = k + j
-        if 0 <= idx < n:
-            t1_num += j2 * c_pow(c_abs(signal[idx]), alpha)
+    """
+    M_k = clip(round(|4f·W_k⁴/den²|^(1/5)), w_min, w_max).
 
-    if sum_j2 == 0.0 or p_k == 0.0:
-        return 0.0
+    Uses envelope W_k (env_k), NOT window length m.
+    den = (bb·W_k + (α·ν−1)·aa²) / 2.
+    """
+    cdef double aa, bb, num, den_raw, den, m_k, denom_bb
 
-    cdef double t1 = 2.0 * t1_num / (p_k * sum_j2)
-    cdef double Lc = w_k / 2.0
-    cdef double c_k = a_k / (2.0 * p_k)
-    cdef double denom2 = 1.0 + 2.0 * Lc + c_k * sum_j2
-    if denom2 == 0.0:
-        return 2.0 * t1
-
-    cdef double t2_num = 0.0
-    for j in range(-half, half + 1):
-        idx = k + j
-        if 0 <= idx < n:
-            jf = <double>j
-            t2_num += (1.0 - jf * jf * c_k) * c_pow(c_abs(signal[idx]), alpha)
-
-    cdef double t2 = c_k * t2_num / (p_k * denom2)
-    return 2.0 * (t1 + t2)
+    aa = -0.5 * d1_k
+    denom_bb = 4.0 * env_k if env_k > 1e-12 else 1e-12
+    bb = (1.0 / 6.0) * (d2_k + alpha_nu_m1 * d1_k * d1_k / denom_bb)
+    num = 4.0 * f_val * c_pow(env_k, 4.0)
+    den_raw = (bb * env_k + alpha_nu_m1 * aa * aa) / 2.0
+    if c_abs(den_raw) < 1e-12:
+        den_raw = 1e-12
+    den = den_raw * den_raw
+    m_k = c_round(c_pow(c_abs(num / den), 0.2))
+    if m_k < <double>w_min:
+        m_k = <double>w_min
+    if m_k > <double>w_max:
+        m_k = <double>w_max
+    return m_k
 
 
-# ─── public function ─────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Public function
+# ---------------------------------------------------------------------------
 
 def adaptive_loop_c(
     double[::1] signal not None,
-    double[::1] w not None,
+    double[::1] w_init not None,
     double alpha = 1.0,
     double nu = 2.0,
     int max_iter = 100,
@@ -114,16 +200,16 @@ def adaptive_loop_c(
     """
     Adaptive envelope loop — Cython C implementation.
 
-    Primary backend for ``extract_envelope``. Compiled at install.
+    Direct port of loopFunction.c. Maintains window lengths m and
+    envelope w_env as separate state variables.
 
     Parameters
     ----------
     signal : double[::1]
-        Nu-order detected signal, contiguous float64 memoryview.
-    w : double[::1]
-        Initial window lengths (modified in-place).
+        Pre-whitened signal, contiguous float64 memoryview.
+    w_init : double[::1]
+        Initial window lengths M_0 (samples).
     alpha, nu : double
-        Signal model parameters (fixed at 1.0, 2.0 in the paper).
     max_iter : int
     convergence_threshold : double
     w_min, w_max : int
@@ -133,54 +219,77 @@ def adaptive_loop_c(
     envelope : np.ndarray, shape (N,)
     n_iter : int
     converged : bool
+    window_lengths : np.ndarray, shape (N,)
     """
     cdef int n = len(signal)
-    cdef double f = _f_alpha_nu(alpha, nu)
-    cdef double[:] w_new = np.empty(n, dtype=np.float64)
+    cdef double p = _p_norm_c(alpha)
+    cdef double f_val = _f_factor_c(alpha, nu)
+    cdef double inv_alpha = 1.0 / alpha
+    cdef double exp_env = 1.0 / (alpha * nu)
+    cdef double alpha_nu_m1 = alpha * nu - 1.0
+    cdef double chi_scale = 1.0 + 2.0 * sqrt(2.0)
 
-    cdef int k, half, half_M, iteration, n_conv
-    cdef double a_k, b_k, p_k, w2, denom, M_k, local_sum_val, w_k_new, rel_change
+    cdef double[:] m = np.array(w_init, dtype=np.float64)
+    cdef double[:] w_env = np.empty(n, dtype=np.float64)
+    cdef double[:] d1 = np.empty(n, dtype=np.float64)
+    cdef double[:] d2 = np.empty(n, dtype=np.float64)
+    cdef double[:] m_new = np.empty(n, dtype=np.float64)
+    cdef double[:] w_new = np.empty(n, dtype=np.float64)
+    cdef double[:] d1_new = np.empty(n, dtype=np.float64)
+    cdef double[:] d2_new = np.empty(n, dtype=np.float64)
+
+    cdef int k, iteration, n_conv
+    cdef double log_m_now, e1, e2
     cdef bint converged = False
+
+    # Entropy proxy arrays (log(M) tracks chi2 entropy monotonically)
+    cdef double[:] log_m_t2 = np.zeros(n, dtype=np.float64)
+    cdef double[:] log_m_t1 = np.zeros(n, dtype=np.float64)
+    cdef unsigned char[:] frozen = np.zeros(n, dtype=np.uint8)
+
+    # Initialise state
+    for k in range(n):
+        w_env[k] = _envelope_k(signal, k, m[k], n, nu, p, exp_env)
+        _derivatives_k(signal, k, m[k], n, inv_alpha, p, &d1[k], &d2[k])
 
     for iteration in range(max_iter):
         n_conv = 0
         for k in range(n):
-            half = max(1, <int>(w[k]) // 2)
-            p_k = c_pow(max(w[k], 1.0), 1.0 / alpha)
-
-            a_k = _first_deriv(signal, k, half, n, alpha)
-            b_k = _second_deriv(signal, k, half, n, alpha, w[k], a_k, p_k)
-
-            # Optimal smoothing constant M_k (Eq. 3)
-            w2 = w[k] * w[k]
-            denom = b_k + 0.5 * (alpha * nu - 1.0) * a_k * a_k / max(w2, 1e-12)
-            if c_abs(denom) < 1e-12:
-                denom = 1e-12
-            M_k = c_pow(c_abs(4.0 * w2 * f / denom), 0.2)
-            if M_k < w_min:
-                M_k = w_min
-            if M_k > w_max:
-                M_k = w_max
-
-            # Re-linearize (Eq. 6)
-            half_M = max(1, <int>M_k // 2)
-            local_sum_val = _local_sum(signal, k, half_M, n, nu)
-            w_k_new = c_pow(local_sum_val / max(M_k, 1.0), 1.0 / nu)
-            if w_k_new < w_min:
-                w_k_new = w_min
-            if w_k_new > w_max:
-                w_k_new = w_max
-            w_new[k] = w_k_new
-
-            rel_change = c_abs(w_k_new - w[k]) / max(w[k], 1e-12)
-            if rel_change < 0.01:
+            if frozen[k]:
                 n_conv += 1
+                continue
 
         for k in range(n):
-            w[k] = w_new[k]
+            if frozen[k]:
+                continue
+
+            m_new[k] = _filter_length_k(
+                w_env[k], d1[k], d2[k], alpha_nu_m1, f_val, w_min, w_max
+            )
+            w_new[k] = _envelope_k(signal, k, m_new[k], n, nu, p, exp_env)
+            _derivatives_k(signal, k, m_new[k], n, inv_alpha, p, &d1_new[k], &d2_new[k])
+
+            # Entropy proxy: log(M) — converge when rate of change slows
+            log_m_now = log(m_new[k]) if m_new[k] > 1.0 else 0.0
+            if iteration >= 2:
+                e2 = log_m_t1[k] - log_m_t2[k]
+                e1 = log_m_now - log_m_t1[k]
+                if e2 - e1 < 0.0:
+                    frozen[k] = 1
+                    n_conv += 1
+
+            log_m_t2[k] = log_m_t1[k]
+            log_m_t1[k] = log_m_now
+
+        for k in range(n):
+            if not frozen[k]:
+                m[k] = m_new[k]
+                w_env[k] = w_new[k]
+                d1[k] = d1_new[k]
+                d2[k] = d2_new[k]
 
         if (<double>n_conv / <double>n) >= convergence_threshold:
             converged = True
             break
 
-    return np.asarray(w), iteration + 1, converged
+    return np.asarray(w_env), iteration + 1, converged, np.asarray(m)

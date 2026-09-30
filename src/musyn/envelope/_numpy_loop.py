@@ -1,277 +1,185 @@
 """
 NumPy vectorized fallback for the adaptive envelope inner loop.
 
-Always available (no compilation needed). Uses a prefix-sum (cumsum)
-groupby strategy: samples are grouped by their integer-rounded window
-length, and a sliding sum is computed for each unique width.
+Direct port of the MATLAB adaptiveEnvelope algorithm (SmRanaldi/EMG_envelope).
+The C MEX implementation (loopFunction.c) is the authoritative reference.
 
-This is ~5-20x faster than pure Python but slower than the Cython/Numba
-backends. It is used automatically when neither Cython nor Numba is available.
+Algorithm state per iteration: window lengths m AND envelope w_env are
+maintained separately. filterLength uses the envelope w_env (not m) in
+its formula. m is the smoothing window; w_env is the amplitude estimate.
+
+Constants from loopFunction.c:
+    P_NORM   = sqrt(2/pi)   = 0.797884560802866
+    F_FACTOR = (pi-1)/(alpha*nu)^2  (derived from the buggy f.m which
+               cancels gamma(nu+0.5)/gamma(nu+0.5) = 1, giving sqrt(pi)^2-1 = pi-1)
 
 References
 ----------
-Ranaldi et al. (2018), Equations (3)–(6).
+Ranaldi et al. (2018), Equations (3)–(6). MATLAB repo SmRanaldi/EMG_envelope.
 """
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
+# ---------------------------------------------------------------------------
+# Constants and helpers
+# ---------------------------------------------------------------------------
 
-def _variable_window_sum(
-    signal: np.ndarray,
-    w_int: np.ndarray,
-    nu: float,
-) -> np.ndarray:
+def _p_norm(alpha: float) -> float:
+    """Normalization constant p = 2^(1/(2α)) · Γ((α+1)/(2α)) / √π.
+
+    For alpha=1: p = sqrt(2/pi) ≈ 0.7979  (P_NORM in loopFunction.c).
     """
-    Compute sum_{i=-m//2}^{m//2} |s_{k+i}|^nu for each sample k,
-    where m = w_int[k] (half-window radius = m//2).
-
-    Uses the prefix-sum groupby trick: for each unique half-window size,
-    compute the prefix sum of |signal|^nu, then look up the window sum
-    for all samples that share that window size.
-
-    Parameters
-    ----------
-    signal : np.ndarray, shape (N,)
-        Signal on which to compute local power.
-    w_int : np.ndarray, shape (N,), dtype int
-        Integer window lengths (full window, symmetric).
-    nu : float
-        Exponent.
-
-    Returns
-    -------
-    local_sum : np.ndarray, shape (N,)
-    """
-    n = len(signal)
-    abs_nu = np.abs(signal) ** nu
-    # Pad signal for boundary handling
-    pad_max = int(w_int.max()) // 2 + 1
-    padded = np.pad(abs_nu, pad_max, mode="edge")
-    # prefix sum on padded array
-    prefix = np.zeros(len(padded) + 1, dtype=np.float64)
-    prefix[1:] = np.cumsum(padded)
-
-    local_sum = np.empty(n, dtype=np.float64)
-    unique_ws = np.unique(w_int)
-
-    for w in unique_ws:
-        half = w // 2
-        mask = w_int == w
-        indices = np.where(mask)[0]
-        # in padded coordinates: sample k → padded index k + pad_max
-        left = indices + pad_max - half
-        right = indices + pad_max + half + 1  # exclusive
-        local_sum[indices] = prefix[right] - prefix[left]
-
-    return local_sum
-
-
-def _compute_first_derivative(
-    signal: np.ndarray,
-    w_int: np.ndarray,
-    alpha: float,
-) -> np.ndarray:
-    """
-    Estimate first derivative of the modulating waveform a_k.
-
-    a_k = 2 * sum_{j=-L}^{L} j * |s_{k+j}|^alpha  / sum_{j=-L}^{L} j^2
-
-    where L = w_int[k] // 2.
-
-    Parameters
-    ----------
-    signal : np.ndarray, shape (N,)
-    w_int : np.ndarray, shape (N,), dtype int
-    alpha : float
-
-    Returns
-    -------
-    a : np.ndarray, shape (N,)
-
-    Notes
-    -----
-    Paper: Eq. (4), Ranaldi et al. (2018).
-    """
-    n = len(signal)
-    abs_alpha = np.abs(signal) ** alpha
-    pad_max = int(w_int.max()) // 2 + 1
-    padded = np.pad(abs_alpha, pad_max, mode="edge")
-
-    a = np.zeros(n, dtype=np.float64)
-    unique_ws = np.unique(w_int)
-
-    for w in unique_ws:
-        half = int(w // 2)
-        if half == 0:
-            continue
-        js = np.arange(-half, half + 1, dtype=np.float64)
-        denom = float(np.sum(js ** 2))
-        if denom == 0:
-            continue
-        mask = w_int == w
-        for k in np.where(mask)[0]:
-            pk = k + pad_max
-            window = padded[pk - half : pk + half + 1]
-            a[k] = 2.0 * np.dot(js, window) / denom
-
-    return a
-
-
-def _compute_second_derivative(
-    signal: np.ndarray,
-    w_int: np.ndarray,
-    w: np.ndarray,
-    a: np.ndarray,
-    alpha: float,
-    nu: float,
-) -> np.ndarray:
-    """
-    Estimate second derivative of the modulating waveform b_k.
-
-    Based on Eq. (5) of Ranaldi et al. (2018).
-
-    Parameters
-    ----------
-    signal : np.ndarray, shape (N,)
-    w_int : np.ndarray, shape (N,), dtype int
-    w : np.ndarray, shape (N,)
-        Current window lengths (float).
-    a : np.ndarray, shape (N,)
-        First derivative estimates.
-    alpha, nu : float
-
-    Returns
-    -------
-    b : np.ndarray, shape (N,)
-    """
-    n = len(signal)
-    abs_alpha = np.abs(signal) ** alpha
-    pad_max = int(w_int.max()) // 2 + 1
-    padded = np.pad(abs_alpha, pad_max, mode="edge")
-
-    b = np.zeros(n, dtype=np.float64)
-    # normalisation factor p = (M^(1/alpha)) as in paper
-    p = np.maximum(w, 1.0) ** (1.0 / alpha)
-    unique_ws = np.unique(w_int)
-
-    for wv in unique_ws:
-        half = int(wv // 2)
-        if half == 0:
-            continue
-        js = np.arange(-half, half + 1, dtype=np.float64)
-        j2 = js ** 2
-        sum_j2 = float(np.sum(j2))
-        if sum_j2 == 0:
-            continue
-        mask = w_int == wv
-        for k in np.where(mask)[0]:
-            pk = k + pad_max
-            window = padded[pk - half : pk + half + 1]
-            # First term of Eq. (5)
-            t1 = 2.0 * np.dot(j2, window) / (p[k] * sum_j2)
-            # Second term — uses Lc = w[k]/2
-            Lc = w[k] / 2.0
-            c_k = a[k] / (2.0 * p[k]) if p[k] != 0 else 0.0
-            weights = 1.0 - j2 * c_k
-            denom2 = 1.0 + 2.0 * Lc + c_k * sum_j2
-            if denom2 != 0:
-                t2 = c_k * np.dot(weights, window) / (p[k] * denom2)
-            else:
-                t2 = 0.0
-            b[k] = 2.0 * (t1 + t2)
-
-    return b
+    return (2.0 ** (1.0 / (2.0 * alpha))) * math.gamma((alpha + 1.0) / (2.0 * alpha)) / math.sqrt(math.pi)
 
 
 def _f_alpha_nu(alpha: float, nu: float) -> float:
+    """F_FACTOR = (pi - 1) / (alpha * nu)^2.
+
+    Matches the hardcoded F_FACTOR in loopFunction.c (= 0.5354 for alpha=1,nu=2),
+    which comes from the MATLAB f.m where gamma(nu+0.5) cancels itself,
+    reducing to (sqrt(pi)^2 - 1) = (pi - 1).
     """
-    Compute f(alpha, nu) from Eq. (2) of Ranaldi et al. (2018).
+    return (math.pi - 1.0) / ((alpha * nu) ** 2)
 
-    f(alpha, nu) = [ (sqrt(pi) * Gamma(nu+0.5) / Gamma(nu+1))^2 - 1 ]
-                  / (alpha * nu)^2
 
-    For nu=2, alpha=1: evaluates to a specific constant.
+# ---------------------------------------------------------------------------
+# Core estimation functions (port of MATLAB/C loopFunction.c)
+# ---------------------------------------------------------------------------
+
+def _envelope_estimation(
+    signal: np.ndarray,
+    m: np.ndarray,
+    alpha: float,
+    nu: float,
+    p: float,
+) -> np.ndarray:
     """
-    from math import gamma, sqrt, pi
-    ratio = sqrt(pi) * gamma(nu + 0.5) / gamma(nu + 1.0)
-    return (ratio ** 2 - 1.0) / (alpha * nu) ** 2
+    Envelope W_k = (mean_{window} |s|^ν / p)^(1/(α·ν)).
+
+    Port of envelopeEstimation() in loopFunction.c / envelopeEstimationMat.m.
+    Window half-length: semiLen = ceil(m[k] / 2).
+    Divides by actual window length (not m[k]).
+    """
+    n = len(signal)
+    w = np.empty(n, dtype=np.float64)
+    exp = 1.0 / (alpha * nu)
+    abs_sig = np.abs(signal)
+
+    for k in range(n):
+        semi = math.ceil(m[k] * 0.5)
+        lo = max(0, k - semi)
+        hi = min(n - 1, k + semi)
+        s = abs_sig[lo : hi + 1]
+        L = hi - lo + 1
+        est = float(np.sum(s ** nu)) / L
+        w[k] = (est / p) ** exp
+
+    return w
 
 
-def _compute_optimal_smoothing(
-    w: np.ndarray,
-    a: np.ndarray,
-    b: np.ndarray,
+def _derivatives_estimation(
+    signal: np.ndarray,
+    m: np.ndarray,
+    alpha: float,
+    nu: float,
+    p: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    First (d1) and second (d2) derivatives of the log-envelope.
+
+    Port of derivativesEstimation() in loopFunction.c / derivativesEstimationMat.m.
+
+    Centering: a[j] = j - ceil(winLen / 2)  for j = 0 … winLen-1
+    (matches C code: a = j - lowerLimit - ceil(0.5*winLen))
+
+    d1[k] = sum(a · |s|^(1/α)) / (sum(a²) · p)
+    d2[k] = 2 · (t1 − t2)
+        t1  = sum(a² · |s|^(1/α)) / (sum(a⁴) · p)
+        c   = sum(a²) / sum(a⁴)
+        t2  = (c / p) · sum((1 − a²·c) · |s|^(1/α)) / (winLen + c·sum(a²))
+    """
+    n = len(signal)
+    d1 = np.zeros(n, dtype=np.float64)
+    d2 = np.zeros(n, dtype=np.float64)
+    inv_alpha = 1.0 / alpha
+    abs_sig = np.abs(signal)
+
+    for k in range(n):
+        semi = math.ceil(m[k] * 0.5)
+        lo = max(0, k - semi)
+        hi = min(n - 1, k + semi)
+        s = abs_sig[lo : hi + 1]
+        L = hi - lo + 1
+
+        # Centered position indices (C convention)
+        center = math.ceil(0.5 * L)
+        a = np.arange(L, dtype=np.float64) - center   # a[j] = j - ceil(L/2)
+
+        s_pow = s ** inv_alpha                          # |s|^(1/α)
+
+        r = float(np.dot(a, a))         # sum(a²)
+        if r == 0.0:
+            continue
+
+        r2 = float(np.sum(a ** 4))      # sum(a⁴)
+
+        d1[k] = float(np.dot(a, s_pow)) / (r * p)
+
+        if r2 == 0.0:
+            continue
+
+        c = r / r2
+        t1 = float(np.dot(a * a, s_pow)) / (r2 * p)
+        est2_2 = float(np.dot(1.0 - a * a * c, s_pow))
+        denom2 = L + c * r
+        t2 = (r / (r2 * p)) * est2_2 / denom2 if denom2 != 0.0 else 0.0
+        d2[k] = 2.0 * (t1 - t2)
+
+    return d1, d2
+
+
+def _filter_length(
+    w_env: np.ndarray,
+    d1: np.ndarray,
+    d2: np.ndarray,
     alpha: float,
     nu: float,
     w_min: int,
     w_max: int,
+    f_val: float,
 ) -> np.ndarray:
     """
-    Compute optimal point-by-point smoothing constant M_k.
+    Optimal window lengths from the filterLengthMat / filterLength formula.
 
-    M_k = |4 w_k^2 f(alpha,nu) / (b_k + 0.5*(alpha*nu-1)*a_k^2/w_k^2)|^(1/5)
+    M_k = clip(round(|4f·W_k⁴ / den²|^(1/5)), w_min, w_max)
+    where W_k  = envelope amplitude (w_env),
+          aa   = −d1/2,
+          bb   = (1/6)·(d2 + (α·ν−1)·d1²/(4·W_k)),
+          den  = (bb·W_k + (α·ν−1)·aa²) / 2.
 
-    Parameters
-    ----------
-    w, a, b : np.ndarray, shape (N,)
-    alpha, nu : float
-    w_min, w_max : int
-
-    Returns
-    -------
-    M : np.ndarray, shape (N,)
-
-    Notes
-    -----
-    Paper: Eq. (3), Ranaldi et al. (2018).
+    NOTE: uses the ENVELOPE w_env (not window length m) throughout.
     """
-    f = _f_alpha_nu(alpha, nu)
-    w2 = w * w
-    safe_w2 = np.where(w2 == 0, 1.0, w2)
-    denom = b + 0.5 * (alpha * nu - 1.0) * a * a / safe_w2
-    # Prevent division by zero and negative denominator issues
-    safe_denom = np.where(np.abs(denom) < 1e-12, 1e-12, denom)
-    M = np.abs(4.0 * w2 * f / safe_denom) ** 0.2  # ^(1/5)
-    return np.clip(M, w_min, w_max)
+    aa = -d1 / 2.0
+    bb = (1.0 / 6.0) * (
+        d2 + (alpha * nu - 1.0) * d1 ** 2 / np.maximum(4.0 * w_env, 1e-12)
+    )
+    num = 4.0 * f_val * w_env ** 4
+    den_raw = (bb * w_env + (alpha * nu - 1.0) * aa ** 2) / 2.0
+    safe_den = np.where(np.abs(den_raw) < 1e-12, 1e-12, den_raw)
+    den = safe_den ** 2
+    M_new = np.round(np.abs(num / den) ** 0.2)
+    return np.clip(M_new, w_min, w_max)
 
 
-def _relinearize(
-    signal: np.ndarray,
-    M: np.ndarray,
-    nu: float,
-    w_min: int,
-    w_max: int,
-) -> np.ndarray:
-    """
-    Re-linearize to obtain envelope estimate w_k.
-
-    w_k = (1/M_k) * [sum_{i=-M_k/2}^{M_k/2} |s_{k+i}|^nu]^(1/nu)
-
-    Parameters
-    ----------
-    signal : np.ndarray, shape (N,)
-    M : np.ndarray, shape (N,)
-        Optimal smoothing constants (float).
-    nu : float
-    w_min, w_max : int
-
-    Returns
-    -------
-    w_new : np.ndarray, shape (N,)
-
-    Notes
-    -----
-    Paper: Eq. (6), Ranaldi et al. (2018).
-    """
-    M_int = np.clip(np.round(M).astype(np.int64), w_min, w_max)
-    local_sum = _variable_window_sum(signal, M_int, nu)
-    w_new = (local_sum / np.maximum(M, 1.0)) ** (1.0 / nu)
-    return w_new
-
+# ---------------------------------------------------------------------------
+# Public entry point
+# ---------------------------------------------------------------------------
 
 def adaptive_loop_np(
-    detected: np.ndarray,
+    signal: np.ndarray,
     w_init: np.ndarray,
     alpha: float = 1.0,
     nu: float = 2.0,
@@ -282,69 +190,117 @@ def adaptive_loop_np(
     w_max: int = 10000,
 ) -> tuple[np.ndarray, dict]:
     """
-    Adaptive envelope loop — pure NumPy implementation.
+    Adaptive envelope loop — NumPy implementation.
 
-    Iteratively refines window lengths until the entropy criterion
-    reaches quasi-stationarity (Ranaldi et al. 2018, Section II-C).
+    Maintains window lengths m and envelope w_env as separate state variables
+    and iterates the fixed-point map until convergence, matching the MATLAB
+    adaptiveEnvelope algorithm (loopFunction.c).
+
+    Convergence follows the MATLAB C code: per-sample entropy of chi2(df=m[k])
+    is tracked over 3 consecutive iterations; a sample is marked converged when
+    the rate of entropy change slows (second difference of entropy < 0). Once
+    converged, a sample's state is frozen. The loop stops when
+    ``convergence_threshold`` fraction of samples have converged.
 
     Parameters
     ----------
-    detected : np.ndarray, shape (N,)
-        Nu-order detected signal (output of ``nu_order_detection``).
+    signal : np.ndarray, shape (N,)
+        Pre-whitened sEMG signal (NOT the nu-order detected signal).
     w_init : np.ndarray, shape (N,)
-        Initial window lengths.
-    alpha : float
-        Shape parameter (fixed at 1.0 in the paper).
-    nu : float
-        Detection order (fixed at 2.0 in the paper).
+        Initial window lengths M_0 (samples).
+    alpha, nu : float
+        Signal model parameters (paper defaults: 1.0 and 2.0).
     max_iter : int
-        Maximum number of iterations.
+        Maximum iterations.
     convergence_threshold : float
-        Stop early when this fraction of samples have converged.
+        Stop when this fraction of samples has converged.
     chi2_alpha : float
-        Significance level for the chi-squared convergence test.
+        Not used directly; kept for API consistency.
     w_min, w_max : int
         Window length bounds.
 
     Returns
     -------
     envelope : np.ndarray, shape (N,)
-        Final envelope estimate.
     info : dict
-        Keys: ``iterations``, ``converged``, ``backend``.
+        Keys: ``iterations``, ``converged``, ``backend``, ``window_lengths``.
     """
-    from scipy.stats import chi2
+    from scipy.stats import chi2 as _chi2
 
-    w = w_init.copy()
-    n = len(detected)
+    p = _p_norm(alpha)
+    f_val = _f_alpha_nu(alpha, nu)
+    n = len(signal)
+
+    # Initialise state: window lengths m, envelope w_env, derivatives d1/d2
+    m = w_init.copy()
+    w_env = _envelope_estimation(signal, m, alpha, nu, p)
+    d1, d2 = _derivatives_estimation(signal, m, alpha, nu, p)
+
+    # Entropy history for convergence (3 rolling values per sample, like C code)
+    ent_t2 = np.zeros(n, dtype=np.float64)   # two iterations ago
+    ent_t1 = np.zeros(n, dtype=np.float64)   # one iteration ago
+    frozen = np.zeros(n, dtype=bool)          # per-sample freeze flag
+
+    # Precompute chi2 entropy for all integer window lengths
+    _ent_cache: dict[int, float] = {}
+
+    def _chi2_entropy(mv: int) -> float:
+        if mv not in _ent_cache:
+            _ent_cache[mv] = float(_chi2.entropy(df=max(mv, 1)))
+        return _ent_cache[mv]
+
     converged = False
+    iteration = 0
+    n_conv = 0
 
     for iteration in range(max_iter):
-        w_int = np.clip(np.round(w).astype(np.int64), w_min, w_max)
+        # Compute new state only for non-frozen samples
+        m_new = m.copy()
+        w_new = w_env.copy()
+        d1_new = d1.copy()
+        d2_new = d2.copy()
 
-        # Compute derivatives
-        a = _compute_first_derivative(detected, w_int, alpha)
-        b = _compute_second_derivative(detected, w_int, w, a, alpha, nu)
-
-        # Optimal smoothing constants
-        M = _compute_optimal_smoothing(w, a, b, alpha, nu, w_min, w_max)
-
-        # Re-linearize
-        w_new = _relinearize(detected, M, nu, w_min, w_max)
-
-        # Convergence: fraction of samples with relative change < chi2 threshold
-        w_safe = np.where(w > 0, w, 1.0)
-        rel_change = np.abs(w_new - w) / w_safe
-        # Use chi-squared critical value as threshold for each sample
-        M_int = np.clip(np.round(M).astype(np.int64), w_min, w_max)
-        chi2_thresh = np.vectorize(lambda m: chi2.ppf(1.0 - chi2_alpha, df=max(m, 1)))(M_int)
-        conv_mask = rel_change < (chi2_thresh / np.maximum(M, 1.0))
-        conv_frac = float(conv_mask.mean())
-
-        w = w_new
-
-        if conv_frac >= convergence_threshold:
+        active = ~frozen
+        if not np.any(active):
             converged = True
             break
 
-    return w, {"iterations": iteration + 1, "converged": converged, "backend": "numpy"}
+        m_new[active] = _filter_length(
+            w_env[active], d1[active], d2[active],
+            alpha, nu, w_min, w_max, f_val,
+        )
+        w_new[active] = _envelope_estimation(signal, m_new, alpha, nu, p)[active]
+        d1_full, d2_full = _derivatives_estimation(signal, m_new, alpha, nu, p)
+        d1_new[active] = d1_full[active]
+        d2_new[active] = d2_full[active]
+
+        # Entropy-based convergence check (matches MATLAB C loopFunction.c)
+        # convCtrl = (ent_t1 - ent_t2) - (ent_now - ent_t1) < 0 → converged
+        if iteration >= 2:
+            m_int = np.clip(np.round(m_new).astype(np.int64), w_min, w_max)
+            ent_now = np.array([_chi2_entropy(int(mv)) for mv in m_int])
+            conv_ctrl = (ent_t1 - ent_t2) - (ent_now - ent_t1)
+            newly_converged = active & (conv_ctrl < 0.0)
+            frozen |= newly_converged
+            n_conv = int(np.sum(frozen))
+        else:
+            m_int = np.clip(np.round(m_new).astype(np.int64), w_min, w_max)
+            ent_now = np.array([_chi2_entropy(int(mv)) for mv in m_int])
+
+        # Roll entropy history
+        ent_t2 = ent_t1.copy()
+        ent_t1 = ent_now.copy()
+
+        # Advance state
+        m, w_env, d1, d2 = m_new, w_new, d1_new, d2_new
+
+        if n_conv >= convergence_threshold * n:
+            converged = True
+            break
+
+    return w_env, {
+        "iterations": iteration + 1,
+        "converged": converged,
+        "backend": "numpy",
+        "window_lengths": m,
+    }

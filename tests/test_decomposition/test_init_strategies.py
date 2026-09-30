@@ -1,7 +1,12 @@
 """Tests for NMF initialization strategies."""
 import numpy as np
-import pytest
-from musyn.decomposition.init_strategies import init_rand, init_nsvd, init_sparse, get_init
+
+from musyn.decomposition.init_strategies import (
+    get_init,
+    init_nsvd,
+    init_rand,
+    init_sparse,
+)
 
 
 def test_init_rand_shapes(rng):

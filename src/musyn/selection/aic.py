@@ -20,8 +20,8 @@ from __future__ import annotations
 import numpy as np
 from joblib import Parallel, delayed
 
-from musyn.decomposition.nnmf import run_nnmf_multi
 from musyn.decomposition.init_strategies import InitStrategy
+from musyn.decomposition.nnmf import run_nnmf_multi
 from musyn.selection.wavelet_dof import compute_total_dof
 
 

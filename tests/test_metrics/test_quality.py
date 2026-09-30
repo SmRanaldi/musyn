@@ -1,7 +1,7 @@
 """Tests for quality metrics."""
 import numpy as np
-import pytest
-from musyn.metrics.quality import cosine_similarity, quality_ratio, vaf, r_squared
+
+from musyn.metrics.quality import cosine_similarity, quality_ratio, r_squared, vaf
 
 
 def test_cosine_similarity_identical():

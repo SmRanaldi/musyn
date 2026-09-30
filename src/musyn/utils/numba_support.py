@@ -12,7 +12,7 @@ checking availability at the definition site.
 """
 from __future__ import annotations
 
-from typing import Callable, Tuple
+from collections.abc import Callable
 
 try:
     import numba  # noqa: F401
@@ -38,7 +38,7 @@ def numba_available() -> bool:
     return NUMBA_AVAILABLE
 
 
-def get_adaptive_loop() -> Tuple[Callable, str]:
+def get_adaptive_loop() -> tuple[Callable, str]:
     """
     Return the best available non-Cython adaptive loop implementation.
 

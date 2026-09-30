@@ -14,7 +14,7 @@ Applied Bionics and Biomechanics.
 """
 from __future__ import annotations
 
-from typing import Literal, Tuple
+from typing import Literal
 
 import numpy as np
 from scipy.sparse.linalg import svds
@@ -33,7 +33,7 @@ def init_rand(
     n_samples: int,
     n_synergies: int,
     rng=None,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Random initialization: W, C ~ Uniform[0, 1].
 
@@ -67,7 +67,7 @@ def init_rand(
 def init_nsvd(
     D: np.ndarray,
     n_synergies: int,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     SVD-based nonnegative initialization (Boutsidis & Gallopoulos 2008).
 
@@ -137,7 +137,7 @@ def init_sparse(
     peak_low: float = 0.7,
     peak_high: float = 0.8,
     rng=None,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Sparse initialization (Soomro et al. 2018) — empirically best strategy.
 
@@ -184,7 +184,7 @@ def get_init(
     D: np.ndarray,
     n_synergies: int,
     rng=None,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Dispatch to the appropriate initialization function.
 

@@ -15,14 +15,16 @@ from __future__ import annotations
 import numpy as np
 
 # ── Backend selection ────────────────────────────────────────────────────────
+from musyn.utils.numba_support import get_adaptive_loop as _get_loop
+
+_fallback_loop, _FALLBACK_BACKEND = _get_loop()
 
 try:
     from musyn.envelope._loop import adaptive_loop_c as _cython_loop
     _BACKEND = "cython"
 except ImportError:
     _cython_loop = None
-    from musyn.utils.numba_support import get_adaptive_loop as _get_loop
-    _fallback_loop, _BACKEND = _get_loop()
+    _BACKEND = _FALLBACK_BACKEND
 
 
 def backend() -> str:
@@ -31,7 +33,7 @@ def backend() -> str:
 
 
 def adaptive_envelope(
-    detected: np.ndarray,
+    whitened: np.ndarray,
     w_init: np.ndarray,
     alpha: float = 1.0,
     nu: float = 2.0,
@@ -49,8 +51,9 @@ def adaptive_envelope(
 
     Parameters
     ----------
-    detected : np.ndarray, shape (N,)
-        Nu-order detected signal (output of ``nu_order_detection``).
+    whitened : np.ndarray, shape (N,)
+        Pre-whitened signal (output of ``prewhiten``). The nu-order
+        detection (|·|^ν) is applied internally by each backend.
     w_init : np.ndarray, shape (N,)
         Initial window lengths (output of ``initialize_window_lengths``).
     alpha : float
@@ -79,16 +82,23 @@ def adaptive_envelope(
     -----
     Paper notation: w_k = (1/M_k) [Σ |s_{k+i}|^ν]^{1/ν} (Eq. 6).
     """
-    detected = np.asarray(detected, dtype=np.float64)
-    w = np.asarray(w_init, dtype=np.float64).copy()
+    whitened = np.asarray(whitened, dtype=np.float64)
+    w_init_arr = np.asarray(w_init, dtype=np.float64)
 
     if _cython_loop is not None:
-        envelope_arr, n_iter, converged = _cython_loop(
-            detected, w, alpha, nu, max_iter, convergence_threshold, w_min, w_max
-        )
-        return envelope_arr, {"iterations": n_iter, "converged": converged, "backend": "cython"}
-    else:
-        return _fallback_loop(
-            detected, w, alpha, nu, max_iter,
-            convergence_threshold, chi2_alpha, w_min, w_max,
-        )
+        try:
+            w = w_init_arr.copy()
+            envelope_arr, n_iter, converged, window_lengths = _cython_loop(
+                whitened, w, alpha, nu, max_iter, convergence_threshold, w_min, w_max
+            )
+            return envelope_arr, {
+                "iterations": n_iter, "converged": converged,
+                "backend": "cython", "window_lengths": window_lengths,
+            }
+        except (ValueError, TypeError):
+            pass  # old compiled extension — fall through to Python backend
+
+    return _fallback_loop(
+        whitened, w_init_arr.copy(), alpha, nu, max_iter,
+        convergence_threshold, chi2_alpha, w_min, w_max,
+    )

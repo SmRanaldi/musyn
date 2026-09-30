@@ -8,12 +8,12 @@ Extraction of Muscle Synergies from Myoelectric Signals via NNMF."
 """
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
 from musyn.decomposition.init_strategies import InitStrategy, get_init
-from musyn.decomposition.updates import update_W, update_C, reconstruction_error
+from musyn.decomposition.updates import reconstruction_error, update_C, update_W
 
 
 def run_nnmf(
@@ -23,7 +23,7 @@ def run_nnmf(
     max_iter: int = 1000,
     tol: float = 1e-4,
     rng=None,
-    callback: Optional[Callable] = None,
+    callback: Callable | None = None,
 ) -> tuple[np.ndarray, np.ndarray, dict]:
     """
     Run NMF with multiplicative update rules.

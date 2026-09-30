@@ -7,18 +7,22 @@ Three algorithms implemented from peer-reviewed research:
 2. NMF synergy extraction — Soomro et al. (2018)
 3. AIC-based synergy number selection — Ranaldi et al. (2021)
 
+Standard preprocessing utilities (filtering, ECG removal, segmentation) are
+available in ``musyn.preprocessing``.
+
 Quick start
 -----------
 >>> import musyn
 >>> envelope = musyn.extract_envelope(signal, fs=1000.0)
->>> W, C, info = musyn.extract_synergies(D, n_synergies=4)
->>> k = musyn.select_synergy_number(D)
+>>> W, C, info = musyn.extract_synergies(envelope, n_synergies=4)
+>>> k = musyn.select_synergy_number(envelope)
 """
 
-from musyn.envelope.api import extract_envelope
+from musyn import preprocessing
 from musyn.decomposition.api import extract_synergies
+from musyn.envelope.api import extract_envelope
+from musyn.metrics.quality import quality_ratio, r_squared, vaf
 from musyn.selection.api import select_synergy_number
-from musyn.metrics.quality import quality_ratio, vaf, r_squared
 
 try:
     from musyn._version import __version__
@@ -32,5 +36,6 @@ __all__ = [
     "quality_ratio",
     "vaf",
     "r_squared",
+    "preprocessing",
     "__version__",
 ]

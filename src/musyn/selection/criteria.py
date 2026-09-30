@@ -14,7 +14,6 @@ from typing import Literal
 import numpy as np
 from scipy.signal import find_peaks, savgol_filter
 
-
 SelectionMethod = Literal[
     "min", "der", "firstpeak", "lastpeak",
     "vaf", "r2", "plateau", "surrogate",
@@ -181,19 +180,27 @@ def select_r2_threshold(
 
 
 def select_plateau(
-    aic_values: np.ndarray,
+    M_matrix: np.ndarray,
+    solutions: list[tuple[np.ndarray, np.ndarray]],
     k_range: list[int],
-    plateau_fraction: float = 0.05,
+    delta_vaf: float = 0.05,
 ) -> int:
     """
-    Select first k where the AIC improvement is < 5% of the total range.
+    Select first k where the VAF increment from k to k+1 drops below 5%.
+
+    Matches the N_5% criterion of Ranaldi et al. (2021) / ``nSyn5Perc.m``
+    in the NSyn_Criteria MATLAB repository:
+      ``first k where VAF(k+1) - VAF(k) <= delta_vaf``
 
     Parameters
     ----------
-    aic_values : np.ndarray
+    M_matrix : np.ndarray, shape (M, N)
+        Envelope matrix (needed to compute VAF from solutions).
+    solutions : list of (W, C) tuples
+        NMF solutions for each k in k_range.
     k_range : list[int]
-    plateau_fraction : float
-        Default 0.05 (5%).
+    delta_vaf : float
+        VAF increment threshold. Default 0.05 (5%).
 
     Returns
     -------
@@ -201,42 +208,52 @@ def select_plateau(
 
     Notes
     -----
-    Paper: N_5% criterion — first k where ΔVAF ≤ 5% (Ranaldi et al. 2021,
-    Table I). Here adapted to AIC: ΔAIC ≤ 5% of total AIC range.
+    Paper: N_5% — "first k such that VAF(k+1) - VAF(k) ≤ 0.05"
+    (Ranaldi et al. 2021, Table I; ``nSyn5Perc.m``).
     """
-    aic = np.asarray(aic_values, dtype=float)
-    total_range = float(aic.max() - aic.min())
-    if total_range == 0:
-        return int(k_range[0])
-    diffs = np.abs(np.diff(aic))
-    candidates = np.where(diffs <= plateau_fraction * total_range)[0]
+    from musyn.metrics.quality import vaf as compute_vaf
+    vaf_curve = np.array([compute_vaf(M_matrix, W, C) for W, C in solutions])
+    diffs = np.diff(vaf_curve)
+    candidates = np.where(diffs <= delta_vaf)[0]
     if len(candidates) == 0:
         return int(k_range[-1])
+    # Return the k at which the increment first falls below threshold
     return int(k_range[int(candidates[0])])
 
 
 def select_surrogate(
     M_matrix: np.ndarray,
-    aic_values: np.ndarray,
+    solutions: list[tuple[np.ndarray, np.ndarray]],
     k_range: list[int],
-    n_surrogates: int = 100,
-    alpha: float = 0.05,
+    n_surrogates: int = 50,
+    surrogate_fraction: float = 0.75,
+    n_runs: int = 3,
     rng=None,
 ) -> int:
     """
-    Surrogate baseline: select first k where real AIC is significantly
-    lower than the surrogate (column-shuffled) distribution.
+    Surrogate-baseline VAF criterion (N_SURR).
+
+    Matches ``nSynRand.m`` from the NSyn_Criteria MATLAB repository:
+      1. Compute real VAF(k) from the provided solutions.
+      2. For each of ``n_surrogates`` column-shuffled versions of M,
+         run NMF for every k and compute surrogate VAF(k).
+      3. ``ths = mean( diff( mean_surrogate_VAF ) )``
+         (mean per-step VAF increment expected by chance).
+      4. Return first k where ``diff(VAF_real)[k] <= surrogate_fraction * ths``.
 
     Parameters
     ----------
     M_matrix : np.ndarray, shape (M, N)
-    aic_values : np.ndarray
+    solutions : list of (W, C) tuples
+        Real-data NMF solutions for each k in k_range.
     k_range : list[int]
     n_surrogates : int
-        Number of surrogate shuffles. Default 100.
-    alpha : float
-        Significance level. Default 0.05.
-    rng : seed
+        Number of column-shuffled surrogates. Default 50.
+    surrogate_fraction : float
+        Fraction of the surrogate threshold to use (paper: 0.75). Default 0.75.
+    n_runs : int
+        NMF restarts per k per surrogate. Default 3 (kept low for speed).
+    rng : int, np.random.Generator, or None
 
     Returns
     -------
@@ -245,32 +262,35 @@ def select_surrogate(
     Notes
     -----
     Paper: N_SURR criterion (Ranaldi et al. 2021, Table I).
+    MATLAB: ``nSynRand.m`` — ``min(find(diff(VAFCurve) <= 0.75*ths))``
+    where ``ths = mean(diff(VAFRand))``.
     """
-    from musyn.selection.noise import estimate_measurement_noise, total_noise_variance
-    from musyn.selection.aic import compute_aic_for_k
-    from scipy.stats import ttest_1samp
+    from musyn.decomposition.nnmf import run_nnmf_multi
+    from musyn.metrics.quality import vaf as compute_vaf
 
     rng_obj = np.random.default_rng(rng)
-    n_muscles = M_matrix.shape[0]
-    sigma2_M = estimate_measurement_noise(M_matrix)
-    sigma2 = total_noise_variance(M_matrix, sigma2_M)
 
-    for i, k in enumerate(k_range):
-        # Compute surrogate AIC distribution
-        surr_aics = []
-        for _ in range(n_surrogates):
-            surr = M_matrix[:, rng_obj.permutation(M_matrix.shape[1])]
-            surr_aic, _, _ = compute_aic_for_k(
-                surr, k, sigma2, n_muscles,
-                n_runs=3, rng=rng_obj,
-            )
-            surr_aics.append(surr_aic)
-        # One-sided test: real AIC < surrogate distribution?
-        stat, p_val = ttest_1samp(surr_aics, aic_values[i], alternative="greater")
-        if p_val < alpha:
-            return int(k)
+    # Real VAF curve
+    vaf_real = np.array([compute_vaf(M_matrix, W, C) for W, C in solutions])
 
-    return int(k_range[-1])
+    # Surrogate VAF curves: shape (n_surrogates, len(k_range))
+    surr_vafs = np.empty((n_surrogates, len(k_range)))
+    for s in range(n_surrogates):
+        surr = M_matrix[:, rng_obj.permutation(M_matrix.shape[1])]
+        for i, k in enumerate(k_range):
+            W_s, C_s, _ = run_nnmf_multi(surr, k, n_runs=n_runs, rng=rng_obj)
+            surr_vafs[s, i] = compute_vaf(surr, W_s, C_s)
+
+    # Mean surrogate VAF curve, then mean increment
+    mean_surr_vaf = surr_vafs.mean(axis=0)
+    ths = float(np.mean(np.diff(mean_surr_vaf)))
+
+    # Find first k where real increment <= 75% of chance increment
+    diffs_real = np.diff(vaf_real)
+    candidates = np.where(diffs_real <= surrogate_fraction * ths)[0]
+    if len(candidates) == 0:
+        return int(k_range[-1])
+    return int(k_range[int(candidates[0])])
 
 
 def select_synergy_count(
@@ -287,19 +307,27 @@ def select_synergy_count(
     Parameters
     ----------
     aic_values : np.ndarray
+        AIC values for each k. Required for 'min', 'der', 'firstpeak', 'lastpeak'.
     k_range : list[int]
     method : SelectionMethod
     M_matrix : np.ndarray, optional
-        Required for 'vaf', 'r2', 'surrogate'.
+        Envelope matrix. Required for 'vaf', 'r2', 'plateau', 'surrogate'.
     solutions : list of (W, C), optional
-        Required for 'vaf', 'r2'.
+        NMF solutions per k. Required for 'vaf', 'r2', 'plateau', 'surrogate'.
     **kwargs
-        Passed to the individual selection function.
+        Forwarded to the individual criterion function.
 
     Returns
     -------
     k_opt : int
     """
+    _needs_solutions = {"vaf", "r2", "plateau", "surrogate"}
+    if method in _needs_solutions:
+        if M_matrix is None or solutions is None:
+            raise ValueError(
+                f"method='{method}' requires both M_matrix and solutions."
+            )
+
     if method == "min":
         return select_min(aic_values, k_range)
     elif method == "der":
@@ -313,9 +341,9 @@ def select_synergy_count(
     elif method == "r2":
         return select_r2_threshold(M_matrix, solutions, k_range, **kwargs)
     elif method == "plateau":
-        return select_plateau(aic_values, k_range, **kwargs)
+        return select_plateau(M_matrix, solutions, k_range, **kwargs)
     elif method == "surrogate":
-        return select_surrogate(M_matrix, aic_values, k_range, **kwargs)
+        return select_surrogate(M_matrix, solutions, k_range, **kwargs)
     else:
         raise ValueError(
             f"Unknown method '{method}'. Choose from: "

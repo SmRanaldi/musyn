@@ -1,0 +1,47 @@
+name: Bug report
+description: Something in musyn doesn't work as documented
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: >-
+        A minimal script that reproduces the issue, using synthetic data
+        (e.g. `numpy.random.default_rng`) rather than real EMG recordings.
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Traceback / output
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: musyn version
+      description: Output of `python -c "import musyn; print(musyn.__version__)"`
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version and OS
+      placeholder: "e.g. Python 3.12.4, macOS 15.1"
+    validations:
+      required: true
+  - type: textarea
+    id: backend
+    attributes:
+      label: Active envelope backend (if relevant)
+      description: >-
+        If the issue involves `extract_envelope`, the `info['backend']`
+        value ('cython', 'numba', or 'numpy') from the affected call.

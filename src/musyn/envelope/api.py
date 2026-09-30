@@ -9,14 +9,12 @@ Journal of Electromyography and Kinesiology.
 """
 from __future__ import annotations
 
-from typing import Union
-
 import numpy as np
 from joblib import Parallel, delayed
 
-from musyn.envelope.prewhiten import prewhiten
-from musyn.envelope.detection import nu_order_detection, initialize_window_lengths
 from musyn.envelope.adaptive import adaptive_envelope
+from musyn.envelope.detection import initialize_window_lengths
+from musyn.envelope.prewhiten import prewhiten
 from musyn.utils.validation import check_signal_1d
 
 
@@ -35,10 +33,9 @@ def _process_single_channel(
 ) -> tuple[np.ndarray, dict]:
     """Process one channel through the full envelope pipeline."""
     whitened = prewhiten(signal, order=ar_order)
-    detected = nu_order_detection(whitened, nu=nu)
     w_init = initialize_window_lengths(len(signal), fs, w_min, w_max, init_ms)
     envelope, info = adaptive_envelope(
-        detected, w_init, alpha=alpha, nu=float(nu),
+        whitened, w_init, alpha=alpha, nu=float(nu),
         max_iter=max_iter, convergence_threshold=convergence_threshold,
         chi2_alpha=chi2_alpha, w_min=w_min, w_max=w_max,
     )
@@ -46,7 +43,7 @@ def _process_single_channel(
 
 
 def extract_envelope(
-    signal: Union[np.ndarray, list],
+    signal: np.ndarray | list,
     fs: float = 1000.0,
     ar_order: int = 12,
     alpha: float = 1.0,
@@ -56,10 +53,10 @@ def extract_envelope(
     chi2_alpha: float = 0.05,
     w_min: int = 1,
     w_max: int = 10000,
-    init_ms: float = 100.0,
+    init_ms: float = 500.0,
     n_jobs: int = -1,
     return_info: bool = False,
-) -> Union[np.ndarray, tuple[np.ndarray, list[dict]]]:
+) -> np.ndarray | tuple[np.ndarray, list[dict]]:
     """
     Extract the sEMG amplitude envelope using the adaptive algorithm.
 
@@ -100,7 +97,9 @@ def extract_envelope(
     w_max : int
         Maximum adaptive window length in samples. Default 10000.
     init_ms : float
-        Initial window length in milliseconds. Default 100 ms.
+        Initial window length in milliseconds. Default 500 ms. The paper
+        and ``initialize_window_lengths`` (this parameter's default when
+        called directly) use 100 ms; this wrapper's default is 500 ms.
     n_jobs : int
         Number of parallel jobs for multi-channel processing.
         ``-1`` = use all CPUs. Ignored for 1-D input. Default -1.
@@ -113,7 +112,8 @@ def extract_envelope(
         Estimated amplitude envelope. Same shape as input.
     info : list[dict], optional
         Only returned when ``return_info=True``. Each dict contains:
-        ``iterations``, ``converged``, ``backend``.
+        ``iterations``, ``converged``, ``backend``,
+        ``window_lengths`` (ndarray, shape (N,) — optimal M_k per sample).
 
     References
     ----------

@@ -1,0 +1,8 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include CITATION.cff
+recursive-include src/musyn *.pyx *.pxd
+include src/musyn/py.typed
+recursive-exclude src/musyn *.c
+prune biblio

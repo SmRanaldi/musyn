@@ -1,8 +1,29 @@
-# Claude Code — session state and settings (machine-local, never commit)
+# Claude Code — session state, settings, and project docs (machine-local)
 .claude/
+CLAUDE.md
 
 # Reference papers — large PDFs, keep local only
 biblio/
+
+# Real subject-data experiments and their outputs — never publish real EMG
+# recordings or paths to them (synthetic data only in the public repo; see
+# CONTRIBUTING.md's testing policy and tests/conftest.py's fixtures)
+examples/test_real_data.py
+examples/real_data_*.png
+
+# Generated example outputs — regenerate locally with `python
+# examples/0N_*.py`; the docs site keeps its own tracked copies under
+# docs/_static/examples/
+examples/*.png
+examples/data/pipeline_results.npz
+
+# Local scratch notes, not part of the package
+issues.txt
+
+# setuptools-scm generated version file (regenerated on every install/build;
+# tracking it causes permanent "dirty" version suffixes -- see
+# https://github.com/pypa/setuptools-scm/issues/468)
+src/musyn/_version.py
 
 # Python
 __pycache__/
@@ -58,3 +79,6 @@ htmlcov/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+
+# Sphinx docs build output
+docs/_build/

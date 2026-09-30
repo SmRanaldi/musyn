@@ -1,7 +1,7 @@
 """Tests for NMF multiplicative update rules."""
 import numpy as np
-import pytest
-from musyn.decomposition.updates import update_W, update_C, reconstruction_error
+
+from musyn.decomposition.updates import reconstruction_error, update_C, update_W
 
 
 def test_update_W_nonneg(rng):

@@ -17,6 +17,9 @@ DATA = Path(__file__).parent / "data" / "sample_emg.npz"
 def main():
     data = np.load(str(DATA))
     envelope_true = data["envelope_true"]
+    raw_emg = data["raw_emg"]
+    fs = float(data["fs"])
+    envelope = musyn.extract_envelope(raw_emg, fs=fs, n_jobs=-1)
     k_true = int(data["k_true"])
 
     print(f"Ground-truth k: {k_true}")
@@ -48,7 +51,7 @@ def main():
         from musyn.selection.criteria import select_synergy_count
         k_m = select_synergy_count(
             aic_values, k_range, method,
-            M_matrix=envelope_true,
+            M_matrix=envelope,
             solutions=result["solutions"],
         )
         print(f"  {method:12s}: k = {k_m}")

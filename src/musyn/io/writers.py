@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Union
 
 import numpy as np
 
 
-def save_npz(path: Union[str, Path], **arrays: np.ndarray) -> None:
+def save_npz(path: str | Path, **arrays: np.ndarray) -> None:
     """
     Save arrays to a compressed NumPy .npz archive.
 
@@ -25,7 +24,7 @@ def save_npz(path: Union[str, Path], **arrays: np.ndarray) -> None:
 
 
 def save_results(
-    path: Union[str, Path],
+    path: str | Path,
     W: np.ndarray,
     C: np.ndarray,
     envelope: np.ndarray | None = None,
