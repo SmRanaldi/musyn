@@ -111,9 +111,12 @@ ignore_missing_imports = true
 # major platforms; the package still installs (falling back to the Numba
 # or NumPy envelope backend) on any interpreter/platform combo skipped here.
 build = "cp310-* cp311-* cp312-* cp313-*"
-skip = "*-musllinux* pp*"
+skip = "*-musllinux*"
 test-extras = ["dev"]
-test-command = "pytest {project}/tests -m 'not slow'"
+# Double quotes, not single: this runs through cmd.exe on Windows, which
+# doesn't strip single quotes as a shell would -- 'not slow' would arrive
+# at pytest split into two garbage arguments there.
+test-command = "pytest {project}/tests -m \"not slow\""
 # The default "pinned" mode locks pip/setuptools/packaging to versions
 # bundled with cibuildwheel at release time; the ones bundled with the
 # action version above pinned packaging==24.1, conflicting with this
