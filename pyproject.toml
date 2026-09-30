@@ -1,5 +1,15 @@
 [build-system]
-requires = ["setuptools>=77", "setuptools-scm>=7", "cython>=3.0", "numpy>=1.24"]
+# packaging>=24.2 is required explicitly: setuptools>=77 needs it to validate
+# the SPDX `license`/`license-files` fields below (packaging.licenses), but
+# some build-isolation environments (observed on macOS/Windows cibuildwheel
+# runners) don't otherwise pick up a recent enough copy on their own.
+requires = [
+    "setuptools>=77",
+    "setuptools-scm>=7",
+    "cython>=3.0",
+    "numpy>=1.24",
+    "packaging>=24.2",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -107,6 +117,12 @@ test-command = "pytest {project}/tests -m 'not slow'"
 
 [tool.cibuildwheel.linux]
 archs = ["x86_64", "aarch64"]
+# manylinux2014 (the cibuildwheel default) is too old: scipy no longer
+# publishes wheels for it for every supported CPython version, which made
+# `pip install musyn[dev]` fall back to building scipy from source during
+# the test step -- and that container has no OpenBLAS, so it failed.
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "arm64"]
