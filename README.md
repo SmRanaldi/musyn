@@ -361,13 +361,14 @@ python examples/03_synergy_number_selection.py
 - Ranaldi S, De Marchis C, Conforto S (2018) *An automatic, adaptive,
   information-based algorithm for the extraction of the sEMG envelope.*
   J Electromyogr Kinesiol.
-- Soomro MH, Bhatti MH, Kamboh AM, Bhatti A, McEwan AL (2018)
-  *Comparison of Initialization Techniques for Accurate Extraction of
-  Muscle Synergies from Myoelectric Signals via NNMF.*
+- Soomro MH, Conforto S, Giunta G, Ranaldi S, De Marchis C (2018)
+  *Comparison of Initialization Techniques for the Accurate Extraction of
+  Muscle Synergies from Myoelectric Signals via Nonnegative Matrix
+  Factorization.*
   Applied Bionics and Biomechanics.
-- Ranaldi S, Severini G, Bibbo D, Conforto S, De Marchis C (2021)
+- Ranaldi S, De Marchis C, Severini G, Conforto S (2021)
   *An Objective, Information-Based Approach for Selecting the Number of
-  Muscle Synergies via NNMF.*
+  Muscle Synergies to be Extracted via Non-Negative Matrix Factorization.*
   IEEE Trans Neural Syst Rehabil Eng.
 
 If musyn contributes to your research, please cite it — see

@@ -1,9 +1,10 @@
 # AIC-based synergy number selection
 
-Implements Ranaldi, Severini, Bibbo, Conforto & De Marchis (2021), *"An
-Objective, Information-Based Approach for Selecting the Number of Muscle
-Synergies via NNMF"* (IEEE TNSRE) — replacing `findNSynAIC.m`,
-`DoFWaveletEvents.m`, `nSyn5Perc.m`, and `nSynRand.m` from
+Implements Ranaldi, De Marchis, Severini & Conforto (2021), *"An Objective,
+Information-Based Approach for Selecting the Number of Muscle Synergies to
+be Extracted via Non-Negative Matrix Factorization"* (IEEE TNSRE) —
+replacing `findNSynAIC.m`, `DoFWaveletEvents.m`, `nSyn5Perc.m`, and
+`nSynRand.m` from
 [SmRanaldi/NSyn_Criteria](https://github.com/SmRanaldi/NSyn_Criteria).
 
 ## The problem

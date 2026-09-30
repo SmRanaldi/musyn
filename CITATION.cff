@@ -36,37 +36,40 @@ references:
         given-names: Silvia
     journal: Journal of Electromyography and Kinesiology
     year: 2018
+    doi: "10.1016/j.jelekin.2018.06.001"
   - type: article
     title: >-
-      Comparison of Initialization Techniques for Accurate Extraction
-      of Muscle Synergies from Myoelectric Signals via NNMF
+      Comparison of Initialization Techniques for the Accurate
+      Extraction of Muscle Synergies from Myoelectric Signals via
+      Nonnegative Matrix Factorization
     authors:
       - family-names: Soomro
-        given-names: Mohsin Hasan
-      - family-names: Bhatti
-        given-names: Muhammad Hamid
-      - family-names: Kamboh
-        given-names: Awais Mehmood
-      - family-names: Bhatti
-        given-names: Adnan
-      - family-names: McEwan
-        given-names: Alistair L.
+        given-names: Mumtaz Hussain
+      - family-names: Conforto
+        given-names: Silvia
+      - family-names: Giunta
+        given-names: Gaetano
+      - family-names: Ranaldi
+        given-names: Simone
+      - family-names: De Marchis
+        given-names: Cristiano
     journal: Applied Bionics and Biomechanics
     year: 2018
+    doi: "10.1155/2018/3629347"
   - type: article
     title: >-
       An Objective, Information-Based Approach for Selecting the
-      Number of Muscle Synergies via NNMF
+      Number of Muscle Synergies to be Extracted via Non-Negative
+      Matrix Factorization
     authors:
       - family-names: Ranaldi
         given-names: Simone
-      - family-names: Severini
-        given-names: Giacomo
-      - family-names: Bibbo
-        given-names: Daniele
-      - family-names: Conforto
-        given-names: Silvia
       - family-names: De Marchis
         given-names: Cristiano
+      - family-names: Severini
+        given-names: Giacomo
+      - family-names: Conforto
+        given-names: Silvia
     journal: IEEE Transactions on Neural Systems and Rehabilitation Engineering
     year: 2021
+    doi: "10.1109/TNSRE.2021.3134763"

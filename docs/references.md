@@ -7,16 +7,17 @@
   *Journal of Electromyography and Kinesiology*, 42, 1–9.
   → {doc}`user_guide/envelope`
 
-- Soomro MH, Bhatti MH, Kamboh AM, Bhatti A, McEwan AL (2018). **Comparison
-  of Initialization Techniques for Accurate Extraction of Muscle Synergies
-  from Myoelectric Signals via NNMF.** *Applied Bionics and Biomechanics*,
-  2018.
+- Soomro MH, Conforto S, Giunta G, Ranaldi S, De Marchis C (2018).
+  **Comparison of Initialization Techniques for the Accurate Extraction of
+  Muscle Synergies from Myoelectric Signals via Nonnegative Matrix
+  Factorization.** *Applied Bionics and Biomechanics*, 2018.
   → {doc}`user_guide/synergies`
 
-- Ranaldi S, Severini G, Bibbo D, Conforto S, De Marchis C (2021). **An
-  Objective, Information-Based Approach for Selecting the Number of Muscle
-  Synergies via NNMF.** *IEEE Transactions on Neural Systems and
-  Rehabilitation Engineering*, 29, 22–31.
+- Ranaldi S, De Marchis C, Severini G, Conforto S (2021). **An Objective,
+  Information-Based Approach for Selecting the Number of Muscle Synergies
+  to be Extracted via Non-Negative Matrix Factorization.** *IEEE
+  Transactions on Neural Systems and Rehabilitation Engineering*, 29,
+  2676–2683.
   → {doc}`user_guide/selection`
 
 If musyn contributes to your research, please cite the relevant paper(s)

@@ -1,8 +1,9 @@
 # NMF synergy extraction
 
-Implements Soomro, Bhatti, Kamboh, Bhatti & McEwan (2018), *"Comparison of
-Initialization Techniques for Accurate Extraction of Muscle Synergies from
-Myoelectric Signals via NNMF"* (Applied Bionics and Biomechanics).
+Implements Soomro, Conforto, Giunta, Ranaldi & De Marchis (2018), *"Comparison
+of Initialization Techniques for the Accurate Extraction of Muscle Synergies
+from Myoelectric Signals via Nonnegative Matrix Factorization"* (Applied
+Bionics and Biomechanics).
 
 ## The model
 
