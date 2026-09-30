@@ -5,20 +5,23 @@ See {doc}`../../user_guide/envelope` for the narrative version.
 
 ## 1. Pre-whitening
 
-```{automodule} musyn.envelope.prewhiten
-:members:
+```{eval-rst}
+.. automodule:: musyn.envelope.prewhiten
+   :members:
 ```
 
 ## 2. Nu-order detection and window initialization
 
-```{automodule} musyn.envelope.detection
-:members:
+```{eval-rst}
+.. automodule:: musyn.envelope.detection
+   :members:
 ```
 
 ## 3. Adaptive loop and backend dispatch
 
-```{automodule} musyn.envelope.adaptive
-:members:
+```{eval-rst}
+.. automodule:: musyn.envelope.adaptive
+   :members:
 ```
 
 ## 4. High-level API

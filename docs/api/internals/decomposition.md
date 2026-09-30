@@ -5,18 +5,21 @@ The building blocks behind {func}`musyn.extract_synergies`. See
 
 ## Initialization strategies
 
-```{automodule} musyn.decomposition.init_strategies
-:members:
+```{eval-rst}
+.. automodule:: musyn.decomposition.init_strategies
+   :members:
 ```
 
 ## Multiplicative update rules
 
-```{automodule} musyn.decomposition.updates
-:members:
+```{eval-rst}
+.. automodule:: musyn.decomposition.updates
+   :members:
 ```
 
 ## NMF loop and multi-run
 
-```{automodule} musyn.decomposition.nnmf
-:members:
+```{eval-rst}
+.. automodule:: musyn.decomposition.nnmf
+   :members:
 ```

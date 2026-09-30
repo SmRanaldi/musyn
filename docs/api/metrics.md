@@ -7,17 +7,21 @@ original matrix, or extracted synergies against a ground truth.
 `musyn.vaf`, `musyn.r_squared`, and `musyn.quality_ratio` — see
 {doc}`public`.
 
-```{autofunction} musyn.metrics.vaf
-:noindex:
+```{eval-rst}
+.. autofunction:: musyn.metrics.vaf
+   :noindex:
 ```
 
-```{autofunction} musyn.metrics.r_squared
-:noindex:
+```{eval-rst}
+.. autofunction:: musyn.metrics.r_squared
+   :noindex:
 ```
 
-```{autofunction} musyn.metrics.quality_ratio
-:noindex:
+```{eval-rst}
+.. autofunction:: musyn.metrics.quality_ratio
+   :noindex:
 ```
 
-```{autofunction} musyn.metrics.cosine_similarity
+```{eval-rst}
+.. autofunction:: musyn.metrics.cosine_similarity
 ```

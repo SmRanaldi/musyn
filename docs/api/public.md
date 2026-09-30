@@ -5,26 +5,32 @@ These six names, plus the `preprocessing` subpackage, make up
 
 ## Envelope extraction
 
-```{autofunction} musyn.extract_envelope
+```{eval-rst}
+.. autofunction:: musyn.extract_envelope
 ```
 
 ## Synergy extraction
 
-```{autofunction} musyn.extract_synergies
+```{eval-rst}
+.. autofunction:: musyn.extract_synergies
 ```
 
 ## Synergy number selection
 
-```{autofunction} musyn.select_synergy_number
+```{eval-rst}
+.. autofunction:: musyn.select_synergy_number
 ```
 
 ## Quality metrics
 
-```{autofunction} musyn.quality_ratio
+```{eval-rst}
+.. autofunction:: musyn.quality_ratio
 ```
 
-```{autofunction} musyn.vaf
+```{eval-rst}
+.. autofunction:: musyn.vaf
 ```
 
-```{autofunction} musyn.r_squared
+```{eval-rst}
+.. autofunction:: musyn.r_squared
 ```

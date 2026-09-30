@@ -5,26 +5,30 @@ The building blocks behind {func}`musyn.select_synergy_number`. See
 
 ## Noise estimation
 
-```{automodule} musyn.selection.noise
-:members:
+```{eval-rst}
+.. automodule:: musyn.selection.noise
+   :members:
 ```
 
 ## Wavelet-based degrees of freedom
 
 Requires `musyn[wavelet]` (PyWavelets).
 
-```{automodule} musyn.selection.wavelet_dof
-:members:
+```{eval-rst}
+.. automodule:: musyn.selection.wavelet_dof
+   :members:
 ```
 
 ## AIC computation
 
-```{automodule} musyn.selection.aic
-:members:
+```{eval-rst}
+.. automodule:: musyn.selection.aic
+   :members:
 ```
 
 ## Selection criteria
 
-```{automodule} musyn.selection.criteria
-:members:
+```{eval-rst}
+.. automodule:: musyn.selection.criteria
+   :members:
 ```

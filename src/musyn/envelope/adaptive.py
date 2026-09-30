@@ -53,7 +53,7 @@ def adaptive_envelope(
     ----------
     whitened : np.ndarray, shape (N,)
         Pre-whitened signal (output of ``prewhiten``). The nu-order
-        detection (|·|^ν) is applied internally by each backend.
+        detection (``|·|^ν``) is applied internally by each backend.
     w_init : np.ndarray, shape (N,)
         Initial window lengths (output of ``initialize_window_lengths``).
     alpha : float
@@ -80,7 +80,7 @@ def adaptive_envelope(
 
     Notes
     -----
-    Paper notation: w_k = (1/M_k) [Σ |s_{k+i}|^ν]^{1/ν} (Eq. 6).
+    Paper notation: ``w_k = (1/M_k) [Σ |s_{k+i}|^ν]^{1/ν}`` (Eq. 6).
     """
     whitened = np.asarray(whitened, dtype=np.float64)
     w_init_arr = np.asarray(w_init, dtype=np.float64)

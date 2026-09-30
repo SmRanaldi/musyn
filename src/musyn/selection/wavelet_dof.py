@@ -15,7 +15,7 @@ Key algorithm per segment:
   3. Correlate the detail periodogram (first L = round(L_pS/2^i) bins) with
      the signal periodogram at each level → cpCD vector.
   4. Decorrelation level h: first index where diff(cpCD) exceeds
-     -0.05 * mean(|diff(cpCD)|).
+     ``-0.05 * mean(|diff(cpCD)|)``.
   5. DoF_cycle = len(CA[h+1]) * (1 + min(1, P_D[h+1] / P_A[h+1])).
   6. Total DoF for the row = sum over all cycles.
 

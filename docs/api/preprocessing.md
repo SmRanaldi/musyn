@@ -9,24 +9,30 @@ n_channels)` layout (rows = time) — this is the *transpose* of the
 
 ## Filtering
 
-```{autofunction} musyn.preprocessing.condition_emg
+```{eval-rst}
+.. autofunction:: musyn.preprocessing.condition_emg
 ```
 
-```{autofunction} musyn.preprocessing.linear_envelope
+```{eval-rst}
+.. autofunction:: musyn.preprocessing.linear_envelope
 ```
 
 ## ECG artifact removal
 
-```{autofunction} musyn.preprocessing.remove_ecg_scica
+```{eval-rst}
+.. autofunction:: musyn.preprocessing.remove_ecg_scica
 ```
 
 ## Segmentation and normalization
 
-```{autofunction} musyn.preprocessing.segment_envelope
+```{eval-rst}
+.. autofunction:: musyn.preprocessing.segment_envelope
 ```
 
-```{autofunction} musyn.preprocessing.time_normalize_envelope
+```{eval-rst}
+.. autofunction:: musyn.preprocessing.time_normalize_envelope
 ```
 
-```{autofunction} musyn.preprocessing.normalize_envelope
+```{eval-rst}
+.. autofunction:: musyn.preprocessing.normalize_envelope
 ```

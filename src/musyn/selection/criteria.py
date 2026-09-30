@@ -190,7 +190,7 @@ def select_plateau(
 
     Matches the N_5% criterion of Ranaldi et al. (2021) / ``nSyn5Perc.m``
     in the NSyn_Criteria MATLAB repository:
-      ``first k where VAF(k+1) - VAF(k) <= delta_vaf``
+    ``first k where VAF(k+1) - VAF(k) <= delta_vaf``
 
     Parameters
     ----------

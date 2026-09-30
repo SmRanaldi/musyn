@@ -30,7 +30,7 @@ def nu_order_detection(signal: np.ndarray, nu: int = 2) -> np.ndarray:
 
     Notes
     -----
-    Paper notation: s_k = |α w_k| n_k (Eq. 1, Ranaldi et al. 2018).
+    Paper notation: ``s_k = |α w_k| n_k`` (Eq. 1, Ranaldi et al. 2018).
     For nu=2: detected[k] = signal[k]^2, implemented as element-wise
     squaring to avoid the overhead of ``np.abs`` + ``np.power``.
     """

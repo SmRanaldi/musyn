@@ -6,19 +6,24 @@ top-level `musyn` namespace — use `import musyn.io` or
 
 ## Loading
 
-```{autofunction} musyn.io.load_csv
+```{eval-rst}
+.. autofunction:: musyn.io.load_csv
 ```
 
-```{autofunction} musyn.io.load_mat
+```{eval-rst}
+.. autofunction:: musyn.io.load_mat
 ```
 
-```{autofunction} musyn.io.load_npz
+```{eval-rst}
+.. autofunction:: musyn.io.load_npz
 ```
 
 ## Saving
 
-```{autofunction} musyn.io.save_npz
+```{eval-rst}
+.. autofunction:: musyn.io.save_npz
 ```
 
-```{autofunction} musyn.io.save_results
+```{eval-rst}
+.. autofunction:: musyn.io.save_results
 ```
