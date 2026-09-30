@@ -33,7 +33,7 @@ def run_nnmf(
 
     Parameters
     ----------
-    D : np.ndarray, shape (M, N)
+    D : np.ndarray, shape (M x N)
         Non-negative data matrix (EMG envelope).
     n_synergies : int
         Number of synergies k.
@@ -52,9 +52,9 @@ def run_nnmf(
 
     Returns
     -------
-    W : np.ndarray, shape (M, k)
+    W : np.ndarray, shape (M x k)
         Synergy weight matrix.
-    C : np.ndarray, shape (k, N)
+    C : np.ndarray, shape (k x N)
         Synergy activation matrix.
     info : dict
         ``n_iter`` (int), ``converged`` (bool),
@@ -109,7 +109,7 @@ def run_nnmf_multi(
 
     Parameters
     ----------
-    D : np.ndarray, shape (M, N)
+    D : np.ndarray, shape (M x N)
     n_synergies : int
     n_runs : int
         Number of independent restarts. Default 10.
@@ -122,8 +122,8 @@ def run_nnmf_multi(
 
     Returns
     -------
-    W : np.ndarray, shape (M, k)
-    C : np.ndarray, shape (k, N)
+    W : np.ndarray, shape (M x k)
+    C : np.ndarray, shape (k x N)
     info : dict
         Same as ``run_nnmf`` plus ``n_runs`` and ``best_run`` index.
     """

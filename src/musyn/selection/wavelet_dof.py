@@ -172,7 +172,7 @@ def compute_total_dof(
 
     Parameters
     ----------
-    C : np.ndarray, shape (k, N)
+    C : np.ndarray, shape (k x N)
     wavelet : str
     events : 1D array-like of int, optional
 

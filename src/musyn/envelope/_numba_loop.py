@@ -185,7 +185,8 @@ def _adaptive_loop_core(
     Returns
     -------
     envelope : np.ndarray, shape (N,)
-    m_arr : np.ndarray, shape (N,)   — converged window lengths
+    m_arr : np.ndarray, shape (N,)
+        Converged window lengths.
     n_iter : int
     converged : bool
     """

@@ -29,16 +29,16 @@ def update_W(
 
     Parameters
     ----------
-    D : np.ndarray, shape (M, N)
+    D : np.ndarray, shape (M x N)
         Data (envelope) matrix.
-    W : np.ndarray, shape (M, k)
+    W : np.ndarray, shape (M x k)
         Current synergy weights.
-    C : np.ndarray, shape (k, N)
+    C : np.ndarray, shape (k x N)
         Current activation coefficients.
 
     Returns
     -------
-    W_new : np.ndarray, shape (M, k)
+    W_new : np.ndarray, shape (M x k)
         Updated synergy weights (nonneg guaranteed).
 
     Notes
@@ -63,13 +63,13 @@ def update_C(
 
     Parameters
     ----------
-    D : np.ndarray, shape (M, N)
-    W : np.ndarray, shape (M, k)
-    C : np.ndarray, shape (k, N)
+    D : np.ndarray, shape (M x N)
+    W : np.ndarray, shape (M x k)
+    C : np.ndarray, shape (k x N)
 
     Returns
     -------
-    C_new : np.ndarray, shape (k, N)
+    C_new : np.ndarray, shape (k x N)
 
     Notes
     -----
@@ -90,9 +90,9 @@ def reconstruction_error(
 
     Parameters
     ----------
-    D : np.ndarray, shape (M, N)
-    W : np.ndarray, shape (M, k)
-    C : np.ndarray, shape (k, N)
+    D : np.ndarray, shape (M x N)
+    W : np.ndarray, shape (M x k)
+    C : np.ndarray, shape (k x N)
 
     Returns
     -------

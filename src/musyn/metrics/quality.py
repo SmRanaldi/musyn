@@ -44,9 +44,9 @@ def quality_ratio(
 
     Parameters
     ----------
-    W_extracted : np.ndarray, shape (M, k)
+    W_extracted : np.ndarray, shape (M x k)
         Extracted synergy weight matrix.
-    W_true : np.ndarray, shape (M, k_true)
+    W_true : np.ndarray, shape (M x k_true)
         Ground-truth synergy weight matrix.
 
     Returns
@@ -80,10 +80,10 @@ def vaf(
 
     Parameters
     ----------
-    D : np.ndarray, shape (M, N)
+    D : np.ndarray, shape (M x N)
         Original data matrix.
-    W : np.ndarray, shape (M, k)
-    C : np.ndarray, shape (k, N)
+    W : np.ndarray, shape (M x k)
+    C : np.ndarray, shape (k x N)
     per_channel : bool
         If True, compute per-channel VAF (one value per muscle row).
 
@@ -119,9 +119,9 @@ def r_squared(
 
     Parameters
     ----------
-    D : np.ndarray, shape (M, N)
-    W : np.ndarray, shape (M, k)
-    C : np.ndarray, shape (k, N)
+    D : np.ndarray, shape (M x N)
+    W : np.ndarray, shape (M x k)
+    C : np.ndarray, shape (k x N)
     per_channel : bool
         If True, compute per-channel R².
 

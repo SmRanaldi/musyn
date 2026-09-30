@@ -18,9 +18,9 @@ def segment_envelope(
 
     Parameters
     ----------
-    data : np.ndarray, shape (n_samples, n_channels)
+    data : np.ndarray, shape (n_samples x n_channels)
         Envelope signal (rows = time samples, columns = channels).
-    events : sequence of (start, stop) pairs
+    events : sequence of (start; stop) pairs
         Sample indices marking the onset and offset of each trial.
     delay_on : int
         Pre-event padding in samples. Default 500.
@@ -29,9 +29,9 @@ def segment_envelope(
 
     Returns
     -------
-    segments : np.ndarray, shape (total_samples, n_channels)
+    segments : np.ndarray, shape (total_samples x n_channels)
         Concatenated trial segments.
-    maxima : np.ndarray, shape (n_trials, n_channels)
+    maxima : np.ndarray, shape (n_trials x n_channels)
         Per-trial, per-channel signal maximum.
     """
     segs, maxima = [], []
@@ -59,8 +59,8 @@ def time_normalize_envelope(
 
     Parameters
     ----------
-    data : np.ndarray, shape (n_samples_total, n_channels)
-    events : sequence of (start, stop) pairs
+    data : np.ndarray, shape (n_samples_total x n_channels)
+    events : sequence of (start; stop) pairs
     n_samples : int
         Target trial length in samples. Default 100.
     delay_on, delay_off : int
@@ -68,8 +68,8 @@ def time_normalize_envelope(
 
     Returns
     -------
-    data_norm : np.ndarray, shape (n_trials * n_samples, n_channels)
-    maxima : np.ndarray, shape (n_trials, n_channels)
+    data_norm : np.ndarray, shape (n_trials * n_samples x n_channels)
+    maxima : np.ndarray, shape (n_trials x n_channels)
     boundaries : np.ndarray, shape (n_trials + 1,)
         Sample indices separating trials in ``data_norm``.
     """
@@ -102,8 +102,8 @@ def normalize_envelope(
 
     Parameters
     ----------
-    env : np.ndarray, shape (n_samples, n_channels)
-    maxima : np.ndarray, shape (n_trials, n_channels)
+    env : np.ndarray, shape (n_samples x n_channels)
+    maxima : np.ndarray, shape (n_trials x n_channels)
         Per-trial channel maxima (from ``segment_envelope``).
     percentile : float
         Normalisation percentile. Default 80.
@@ -112,7 +112,7 @@ def normalize_envelope(
 
     Returns
     -------
-    env_norm : np.ndarray, shape (n_samples, n_channels)
+    env_norm : np.ndarray, shape (n_samples x n_channels)
     """
     norm_factor = np.percentile(maxima, percentile, axis=0)
     env_norm = env / norm_factor

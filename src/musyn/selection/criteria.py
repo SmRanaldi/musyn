@@ -134,8 +134,8 @@ def select_vaf_threshold(
 
     Parameters
     ----------
-    M_matrix : np.ndarray, shape (M, N)
-    solutions : list of (W, C) tuples
+    M_matrix : np.ndarray, shape (M x N)
+    solutions : list of (W; C) tuples
     k_range : list[int]
     vaf_threshold : float
         Default 0.97 (optimised in Ranaldi et al. 2021).
@@ -162,8 +162,8 @@ def select_r2_threshold(
 
     Parameters
     ----------
-    M_matrix : np.ndarray, shape (M, N)
-    solutions : list of (W, C)
+    M_matrix : np.ndarray, shape (M x N)
+    solutions : list of (W; C)
     k_range : list[int]
     r2_threshold : float
         Default 0.95 (optimised in Ranaldi et al. 2021).
@@ -194,9 +194,9 @@ def select_plateau(
 
     Parameters
     ----------
-    M_matrix : np.ndarray, shape (M, N)
+    M_matrix : np.ndarray, shape (M x N)
         Envelope matrix (needed to compute VAF from solutions).
-    solutions : list of (W, C) tuples
+    solutions : list of (W; C) tuples
         NMF solutions for each k in k_range.
     k_range : list[int]
     delta_vaf : float
@@ -243,8 +243,8 @@ def select_surrogate(
 
     Parameters
     ----------
-    M_matrix : np.ndarray, shape (M, N)
-    solutions : list of (W, C) tuples
+    M_matrix : np.ndarray, shape (M x N)
+    solutions : list of (W; C) tuples
         Real-data NMF solutions for each k in k_range.
     k_range : list[int]
     n_surrogates : int
@@ -312,7 +312,7 @@ def select_synergy_count(
     method : SelectionMethod
     M_matrix : np.ndarray, optional
         Envelope matrix. Required for 'vaf', 'r2', 'plateau', 'surrogate'.
-    solutions : list of (W, C), optional
+    solutions : list of (W; C), optional
         NMF solutions per k. Required for 'vaf', 'r2', 'plateau', 'surrogate'.
     **kwargs
         Forwarded to the individual criterion function.

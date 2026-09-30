@@ -50,8 +50,8 @@ def init_rand(
 
     Returns
     -------
-    W : np.ndarray, shape (M, k)
-    C : np.ndarray, shape (k, N)
+    W : np.ndarray, shape (M x k)
+    C : np.ndarray, shape (k x N)
 
     Notes
     -----
@@ -76,15 +76,15 @@ def init_nsvd(
 
     Parameters
     ----------
-    D : np.ndarray, shape (M, N)
+    D : np.ndarray, shape (M x N)
         Data matrix.
     n_synergies : int
         Number of synergies k.
 
     Returns
     -------
-    W : np.ndarray, shape (M, k)
-    C : np.ndarray, shape (k, N)
+    W : np.ndarray, shape (M x k)
+    C : np.ndarray, shape (k x N)
 
     Notes
     -----
@@ -159,8 +159,8 @@ def init_sparse(
 
     Returns
     -------
-    W : np.ndarray, shape (M, k)
-    C : np.ndarray, shape (k, N)
+    W : np.ndarray, shape (M x k)
+    C : np.ndarray, shape (k x N)
 
     Notes
     -----
@@ -191,14 +191,14 @@ def get_init(
     Parameters
     ----------
     strategy : {'rand', 'nsvd', 'sparse'}
-    D : np.ndarray, shape (M, N)
+    D : np.ndarray, shape (M x N)
     n_synergies : int
     rng : int, np.random.Generator, or None
 
     Returns
     -------
-    W : np.ndarray, shape (M, k)
-    C : np.ndarray, shape (k, N)
+    W : np.ndarray, shape (M x k)
+    C : np.ndarray, shape (k x N)
     """
     M, N = D.shape
     if strategy == "rand":

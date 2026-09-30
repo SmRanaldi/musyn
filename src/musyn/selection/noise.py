@@ -21,7 +21,7 @@ def estimate_measurement_noise(M_matrix: np.ndarray) -> float:
 
     Parameters
     ----------
-    M_matrix : np.ndarray, shape (n_muscles, n_samples)
+    M_matrix : np.ndarray, shape (n_muscles x n_samples)
         sEMG envelope matrix.
 
     Returns
@@ -58,7 +58,7 @@ def estimate_sdn_noise(
 
     Parameters
     ----------
-    M_matrix : np.ndarray, shape (M, N)
+    M_matrix : np.ndarray, shape (M x N)
         sEMG envelope matrix.
     c : float
         SDN coefficient. Paper: random ∈ [0.1, 0.25]; default midpoint 0.175.
@@ -67,7 +67,7 @@ def estimate_sdn_noise(
 
     Returns
     -------
-    sigma2_sdn : np.ndarray, shape (M, N)
+    sigma2_sdn : np.ndarray, shape (M x N)
         SDN variance at each (muscle, time) point.
 
     Notes
@@ -92,7 +92,7 @@ def total_noise_variance(
 
     Parameters
     ----------
-    M_matrix : np.ndarray, shape (M, N)
+    M_matrix : np.ndarray, shape (M x N)
     sigma2_M : float
         Measurement noise variance.
     c : float
@@ -101,7 +101,7 @@ def total_noise_variance(
 
     Returns
     -------
-    sigma2 : np.ndarray, shape (M, N)
+    sigma2 : np.ndarray, shape (M x N)
         Total noise variance.
 
     Notes

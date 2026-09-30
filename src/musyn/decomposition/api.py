@@ -36,7 +36,7 @@ def extract_synergies(
 
     Parameters
     ----------
-    D : array-like, shape (M, N)
+    D : array-like, shape (M x N)
         Non-negative EMG envelope matrix. M = number of muscles,
         N = number of time samples. Use ``extract_envelope`` first
         to obtain a non-negative envelope from raw sEMG.
@@ -63,9 +63,9 @@ def extract_synergies(
 
     Returns
     -------
-    W : np.ndarray, shape (M, k)
+    W : np.ndarray, shape (M x k)
         Synergy weight matrix. Each column is a synergy vector.
-    C : np.ndarray, shape (k, N)
+    C : np.ndarray, shape (k x N)
         Synergy activation time courses. Each row is an activation signal.
     info : dict
         ``n_iter``, ``converged``, ``final_error``, ``error_history``,

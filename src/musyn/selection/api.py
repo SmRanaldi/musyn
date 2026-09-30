@@ -50,7 +50,7 @@ def select_synergy_number(
 
     Parameters
     ----------
-    M_matrix : array-like, shape (n_muscles, n_samples)
+    M_matrix : array-like, shape (n_muscles x n_samples)
         Non-negative sEMG envelope matrix. Obtain from ``extract_envelope``.
     k_range : range, list[int], or None
         Synergy counts to evaluate. Default: ``range(1, n_muscles + 1)``.

@@ -27,7 +27,7 @@ def load_csv(
 
     Returns
     -------
-    data : np.ndarray, shape (M, N)
+    data : np.ndarray, shape (M x N)
     fs : float
     """
     data = np.loadtxt(path, delimiter=",", **read_csv_kwargs)
@@ -56,7 +56,7 @@ def load_mat(
 
     Returns
     -------
-    data : np.ndarray, shape (M, N)
+    data : np.ndarray, shape (M x N)
     fs : float
     """
     from scipy.io import loadmat

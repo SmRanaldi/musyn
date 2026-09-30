@@ -30,7 +30,7 @@ def condition_emg(
 
     Parameters
     ----------
-    data : np.ndarray, shape (n_samples, n_channels) or (n_samples,)
+    data : np.ndarray, shape (n_samples x n_channels) or (n_samples,)
         Raw sEMG signal. Rows are time samples, columns are channels.
     fs : float
         Sampling frequency in Hz.
@@ -62,7 +62,7 @@ def condition_emg(
 
     Returns
     -------
-    data_out : np.ndarray, same shape as ``data``
+    data_out : np.ndarray, same shape as data
 
     Examples
     --------
@@ -114,7 +114,7 @@ def linear_envelope(
 
     Parameters
     ----------
-    data : np.ndarray, shape (n_samples, n_channels) or (n_samples,)
+    data : np.ndarray, shape (n_samples x n_channels) or (n_samples,)
         Conditioned (filtered) sEMG signal.
     fs : float
         Sampling frequency in Hz.
@@ -123,7 +123,7 @@ def linear_envelope(
 
     Returns
     -------
-    envelope : np.ndarray, same shape as ``data``
+    envelope : np.ndarray, same shape as data
 
     Examples
     --------

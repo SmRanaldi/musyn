@@ -39,7 +39,7 @@ def check_emg_matrix(
 
     Parameters
     ----------
-    D : array-like, shape (M, N)
+    D : array-like, shape (M x N)
         EMG matrix with M channels and N time samples.
     name : str
         Variable name for error messages.
@@ -48,7 +48,7 @@ def check_emg_matrix(
 
     Returns
     -------
-    D : np.ndarray, shape (M, N), dtype float64
+    D : np.ndarray, shape (M x N), dtype float64
     """
     D = np.asarray(D, dtype=np.float64)
     if D.ndim != 2:

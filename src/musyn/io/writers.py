@@ -36,8 +36,8 @@ def save_results(
     Parameters
     ----------
     path : str or Path
-    W : np.ndarray, shape (M, k)
-    C : np.ndarray, shape (k, N)
+    W : np.ndarray, shape (M x k)
+    C : np.ndarray, shape (k x N)
     envelope : np.ndarray, optional
     metadata : dict, optional
         Scalar metadata (n_synergies, fs, etc.) stored as 0-D arrays.

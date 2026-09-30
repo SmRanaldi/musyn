@@ -74,7 +74,7 @@ def extract_envelope(
 
     Parameters
     ----------
-    signal : array-like, shape (N,) or (M, N)
+    signal : array-like, shape (N,) or (M x N)
         Single-channel (1-D) or M-channel (2-D) sEMG signal.
         Values need not be rectified; the algorithm handles this internally.
     fs : float
@@ -108,7 +108,7 @@ def extract_envelope(
 
     Returns
     -------
-    envelope : np.ndarray, shape (N,) or (M, N)
+    envelope : np.ndarray, shape (N,) or (M x N)
         Estimated amplitude envelope. Same shape as input.
     info : list[dict], optional
         Only returned when ``return_info=True``. Each dict contains:

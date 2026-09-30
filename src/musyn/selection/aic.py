@@ -34,9 +34,9 @@ def compute_likelihood(M: np.ndarray, rec: np.ndarray) -> float:
 
     Parameters
     ----------
-    M : np.ndarray, shape (n_muscles, n_samples)
+    M : np.ndarray, shape (n_muscles x n_samples)
         Observed envelope matrix.
-    rec : np.ndarray, shape (n_muscles, n_samples)
+    rec : np.ndarray, shape (n_muscles x n_samples)
         NMF reconstruction W @ C.
 
     Returns
@@ -69,7 +69,7 @@ def compute_aic_for_k(
 
     Parameters
     ----------
-    M_matrix : np.ndarray, shape (n_muscles, n_samples)
+    M_matrix : np.ndarray, shape (n_muscles x n_samples)
     k : int
     n_muscles : int
     wavelet : str
@@ -90,8 +90,8 @@ def compute_aic_for_k(
     -------
     aic_k : float or None
         None when ``compute_dof=False``.
-    W : np.ndarray, shape (n_muscles, k)
-    C : np.ndarray, shape (k, n_samples)
+    W : np.ndarray, shape (n_muscles x k)
+    C : np.ndarray, shape (k x n_samples)
     """
     W, C, _ = run_nnmf_multi(M_matrix, k, n_runs=n_runs, init=init, rng=rng)
     if not compute_dof:
@@ -118,7 +118,7 @@ def aic_curve(
 
     Parameters
     ----------
-    M_matrix : np.ndarray, shape (n_muscles, n_samples)
+    M_matrix : np.ndarray, shape (n_muscles x n_samples)
     k_range : list[int]
     wavelet : str
     n_runs : int
@@ -136,7 +136,7 @@ def aic_curve(
     -------
     aic_values : np.ndarray, shape (len(k_range),), or None
         None when ``compute_dof=False``.
-    solutions : list of (W, C) tuples
+    solutions : list of (W; C) tuples
     """
     n_muscles = M_matrix.shape[0]
     master_rng = np.random.default_rng(rng)
