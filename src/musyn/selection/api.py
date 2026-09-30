@@ -101,9 +101,10 @@ def select_synergy_number(
 
     References
     ----------
-    Ranaldi S, Severini G, Bibbo D, Conforto S, De Marchis C (2021)
+    Ranaldi S, De Marchis C, Severini G, Conforto S (2021)
     "An Objective, Information-Based Approach for Selecting the Number
-    of Muscle Synergies via NNMF."
+    of Muscle Synergies to be Extracted via Non-Negative Matrix
+    Factorization."
     IEEE Trans Neural Syst Rehabil Eng.
 
     Examples

@@ -73,9 +73,10 @@ def extract_synergies(
 
     References
     ----------
-    Soomro MH, Bhatti MH, Kamboh AM, Bhatti A, McEwan AL (2018)
-    "Comparison of Initialization Techniques for Accurate Extraction of
-    Muscle Synergies from Myoelectric Signals via NNMF."
+    Soomro MH, Conforto S, Giunta G, Ranaldi S, De Marchis C (2018)
+    "Comparison of Initialization Techniques for the Accurate Extraction
+    of Muscle Synergies from Myoelectric Signals via Nonnegative Matrix
+    Factorization."
     Applied Bionics and Biomechanics.
 
     Examples
