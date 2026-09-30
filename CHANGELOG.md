@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-30
+
 ### Added
 - Initial package structure (src-layout)
 - Algorithm 1: adaptive sEMG envelope extraction (Ranaldi et al. 2018)
@@ -57,3 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   criteria only read the NMF `solutions`, never `aic_values`. Previously
   this was computed unconditionally regardless of `method`.
   `return_full=True` now returns `aic_values=None` for these four methods.
+
+### Fixed
+- Corrected the author lists for the Soomro et al. (2018) and Ranaldi et
+  al. (2021) paper citations (`CITATION.cff`, `README.md`, docs, and the
+  `extract_synergies`/`select_synergy_number` docstrings), which had
+  fabricated/incorrect co-authors and a wrong author order. Verified
+  against CrossRef, PubMed, and the authors' institutional page.
